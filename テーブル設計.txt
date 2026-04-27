@@ -1,0 +1,156 @@
+テーブル設計
+
+model Breed {
+  id          String     @id @default(uuid())
+  code        Int        @unique
+  name        String     @unique
+  description String?
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  cats        Cat[]
+  pedigrees   Pedigree[]
+
+  @@index([code])
+  @@index([name])
+  @@index([isActive])
+  @@map("breeds")
+}
+
+model CoatColor {
+  id          String     @id @default(uuid())
+  code        Int        @unique
+  name        String
+  description String?
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  cats        Cat[]
+  pedigrees   Pedigree[]
+
+  @@index([code])
+  @@index([name])
+  @@index([isActive])
+  @@map("coat_colors")
+}
+
+model Gender {
+  id          String     @id @default(uuid())
+  code        Int        @unique
+  name        String     @unique
+  description String?
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  pedigrees   Pedigree[]
+
+  @@index([code])
+  @@index([name])
+  @@map("genders")
+}
+
+model Pedigree {
+  id               String     @id @default(uuid())
+  pedigreeId       String     @unique @map("pedigree_id")
+  title            String?    @map("title")
+  catName          String?    @map("cat_name")
+  catName2         String?    @map("cat_name2")
+  breedCode        Int?       @map("breed_code")
+  genderCode       Int?       @map("gender_code")
+  eyeColor         String?    @map("eye_color")
+  coatColorCode    Int?       @map("coat_color_code")
+  birthDate        String?    @map("birth_date")
+  breederName      String?    @map("breeder_name")
+  ownerName        String?    @map("owner_name")
+  registrationDate String?    @map("registration_date")
+  brotherCount     Int?       @map("brother_count")
+  sisterCount      Int?       @map("sister_count")
+  notes            String?    @map("notes")
+  notes2           String?    @map("notes2")
+  otherNo          String?    @map("other_no")
+  fatherTitle      String?    @map("father_title")
+  fatherCatName    String?    @map("father_cat_name")
+  fatherCatName2   String?    @map("father_cat_name2")
+  fatherCoatColor  String?    @map("father_coat_color")
+  fatherEyeColor   String?    @map("father_eye_color")
+  fatherJCU        String?    @map("father_jcu")
+  fatherOtherCode  String?    @map("father_other_code")
+  motherTitle      String?    @map("mother_title")
+  motherCatName    String?    @map("mother_cat_name")
+  motherCatName2   String?    @map("mother_cat_name2")
+  motherCoatColor  String?    @map("mother_coat_color")
+  motherEyeColor   String?    @map("mother_eye_color")
+  motherJCU        String?    @map("mother_jcu")
+  motherOtherCode  String?    @map("mother_other_code")
+  ffTitle          String?    @map("ff_title")
+  ffCatName        String?    @map("ff_cat_name")
+  ffCatColor       String?    @map("ff_cat_color")
+  fmTitle          String?    @map("fm_title")
+  fmCatName        String?    @map("fm_cat_name")
+  fmCatColor       String?    @map("fm_cat_color")
+  mfTitle          String?    @map("mf_title")
+  mfCatName        String?    @map("mf_cat_name")
+  mfCatColor       String?    @map("mf_cat_color")
+  mmTitle          String?    @map("mm_title")
+  mmCatName        String?    @map("mm_cat_name")
+  mmCatColor       String?    @map("mm_cat_color")
+  fffTitle         String?    @map("fff_title")
+  fffCatName       String?    @map("fff_cat_name")
+  fffCatColor      String?    @map("fff_cat_color")
+  ffmTitle         String?    @map("ffm_title")
+  ffmCatName       String?    @map("ffm_cat_name")
+  ffmCatColor      String?    @map("ffm_cat_color")
+  fmfTitle         String?    @map("fmf_title")
+  fmfCatName       String?    @map("fmf_cat_name")
+  fmfCatColor      String?    @map("fmf_cat_color")
+  fmmTitle         String?    @map("fmm_title")
+  fmmCatName       String?    @map("fmm_cat_name")
+  fmmCatColor      String?    @map("fmm_cat_color")
+  mffTitle         String?    @map("mff_title")
+  mffCatName       String?    @map("mff_cat_name")
+  mffCatColor      String?    @map("mff_cat_color")
+  mfmTitle         String?    @map("mfm_title")
+  mfmCatName       String?    @map("mfm_cat_name")
+  mfmCatColor      String?    @map("mfm_cat_color")
+  mmfTitle         String?    @map("mmf_title")
+  mmfCatName       String?    @map("mmf_cat_name")
+  mmfCatColor      String?    @map("mmf_cat_color")
+  mmmTitle         String?    @map("mmm_title")
+  mmmCatName       String?    @map("mmm_cat_name")
+  mmmCatColor      String?    @map("mmm_cat_color")
+  oldCode          String?    @map("old_code")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  fffjcu           String?    @map("fffjcu")
+  ffjcu            String?    @map("ffjcu")
+  ffmjcu           String?    @map("ffmjcu")
+  fmfjcu           String?    @map("fmfjcu")
+  fmjcu            String?    @map("fmjcu")
+  fmmjcu           String?    @map("fmmjcu")
+  mffjcu           String?    @map("mffjcu")
+  mfjcu            String?    @map("mfjcu")
+  mfmjcu           String?    @map("mfmjcu")
+  mmfjcu           String?    @map("mmfjcu")
+  mmjcu            String?    @map("mmjcu")
+  mmmjcu           String?    @map("mmmjcu")
+  cats             Cat[]      @relation("CatPedigree")
+  breed            Breed?     @relation(fields: [breedCode], references: [code])
+  coatColor        CoatColor? @relation(fields: [coatColorCode], references: [code])
+  gender           Gender?    @relation(fields: [genderCode], references: [code])
+
+  @@index([breedCode])
+  @@index([genderCode])
+  @@index([coatColorCode])
+  @@index([catName])
+  @@index([pedigreeId])
+  @@index([catName2])
+  @@index([eyeColor])
+  @@index([breederName])
+  @@index([ownerName])
+  @@index([birthDate])
+  @@index([registrationDate])
+  @@index([createdAt])
+  @@index([updatedAt])
+  @@index([breedCode, catName])
+  @@map("pedigrees")
+}
