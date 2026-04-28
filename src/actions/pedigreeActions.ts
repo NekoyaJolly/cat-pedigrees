@@ -7,26 +7,60 @@ export type PedigreeWithRelations = Prisma.PedigreeGetPayload<{
   include: { breed: true; gender: true; coatColor: true }
 }>;
 
-export async function searchPedigrees(query: string = ''): Promise<PedigreeWithRelations[]> {
+export interface SearchParams {
+  q?: string;
+  breed?: string;
+  coatColor?: string;
+  gender?: string;
+}
+
+export async function searchPedigrees(params: SearchParams = {}): Promise<PedigreeWithRelations[]> {
+  const { q, breed, coatColor, gender } = params;
+  
+  const hasFilters = Boolean(q || breed || coatColor || gender);
+
   try {
+    const whereClause: Prisma.PedigreeWhereInput = {};
+
+    if (q) {
+      whereClause.OR = [
+        { pedigreeId: { contains: q, mode: 'insensitive' } },
+        { catName: { contains: q, mode: 'insensitive' } },
+        { ownerName: { contains: q, mode: 'insensitive' } },
+        { breederName: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    if (breed) {
+      const parsed = parseInt(breed, 10);
+      whereClause.breed = !isNaN(parsed) 
+        ? { OR: [{ code: parsed }, { name: { contains: breed, mode: 'insensitive' } }] }
+        : { name: { contains: breed, mode: 'insensitive' } };
+    }
+
+    if (coatColor) {
+      const parsed = parseInt(coatColor, 10);
+      whereClause.coatColor = !isNaN(parsed)
+        ? { OR: [{ code: parsed }, { name: { contains: coatColor, mode: 'insensitive' } }] }
+        : { name: { contains: coatColor, mode: 'insensitive' } };
+    }
+
+    if (gender) {
+      const parsed = parseInt(gender, 10);
+      whereClause.gender = !isNaN(parsed)
+        ? { OR: [{ code: parsed }, { name: { contains: gender, mode: 'insensitive' } }] }
+        : { name: { contains: gender, mode: 'insensitive' } };
+    }
+
     const pedigrees = await prisma.pedigree.findMany({
-      where: query
-        ? {
-            OR: [
-              { pedigreeId: { contains: query, mode: 'insensitive' } },
-              { catName: { contains: query, mode: 'insensitive' } },
-              { ownerName: { contains: query, mode: 'insensitive' } },
-              { breederName: { contains: query, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
+      where: whereClause,
       include: {
         breed: true,
         gender: true,
         coatColor: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 500, // Increased limit for table viewing
+      take: hasFilters ? 5000 : 500, // If filtering, allow up to 5000 results
     });
     return pedigrees;
   } catch (error) {

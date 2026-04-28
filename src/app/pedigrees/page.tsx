@@ -6,8 +6,11 @@ export const metadata = {
   title: '血統書一覧',
 };
 
-export default async function PedigreesPage() {
-  const pedigrees = await searchPedigrees();
+export default async function PedigreesPage(props: {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}) {
+  const params = await props.searchParams;
+  const pedigrees = await searchPedigrees(params);
   const rawBreeds = await getBreeds();
   const rawCoatColors = await getCoatColors();
   const rawGenders = await getGenders();
