@@ -1,48 +1,15 @@
-import { searchPedigrees, getBreeds, getCoatColors, getGenders } from '@/actions/pedigreeActions';
-import { columns } from './columns';
+import { searchPedigreePage, getBreeds, getCoatColors, getGenders, type SearchParams } from '@/actions/pedigreeActions';
 import { DataTable } from './data-table';
+import { DataTableToolbar } from './data-table-toolbar';
 
-export const metadata = {
-  title: '血統書一覧',
-};
+export const metadata = { title: '一覧・検索 | 血統書管理' };
 
-export default async function PedigreesPage(props: {
-  searchParams: Promise<{ [key: string]: string | undefined }>;
-}) {
-  const params = await props.searchParams;
-  const pedigrees = await searchPedigrees(params);
-  const rawBreeds = await getBreeds();
-  const rawCoatColors = await getCoatColors();
-  const rawGenders = await getGenders();
-
-  const breeds = rawBreeds.map(b => ({
-    label: `${b.code} ${b.name}`,
-    value: `${b.code} ${b.name}`
-  }));
-
-  const coatColors = rawCoatColors.map(c => ({
-    label: `${c.code} ${c.name}`,
-    value: `${c.code} ${c.name}`
-  }));
-
-  const genders = rawGenders.map(g => ({
-    label: `${g.code} ${g.name}`,
-    value: `${g.code} ${g.name}`
-  }));
-
-  return (
-    <div className="container mx-auto py-10 h-full flex flex-col">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">血統書一覧</h1>
-      
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex-1">
-        <DataTable 
-          columns={columns} 
-          data={pedigrees} 
-          breeds={breeds}
-          coatColors={coatColors}
-          genders={genders}
-        />
-      </div>
-    </div>
-  );
+export default async function PedigreesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const params = await searchParams;
+  const [result, breeds, colors, genders] = await Promise.all([searchPedigreePage(params), getBreeds(), getCoatColors(), getGenders()]);
+  return <div className="mx-auto w-full max-w-screen-2xl">
+    <div className="mb-4 flex items-center justify-between gap-3"><h1 className="text-xl font-bold">一覧・検索</h1><a className="action-primary" href="/pedigrees/new">新規登録</a></div>
+    <DataTableToolbar params={params} masters={{ breeds, colors, genders }} />
+    <DataTable result={result} params={params} />
+  </div>;
 }

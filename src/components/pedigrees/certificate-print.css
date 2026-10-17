@@ -1,0 +1,30 @@
+@page { size: 339mm 239mm; margin: 0; }
+.certificate-scroll { overflow: auto; padding: 1px; }
+.print-certificate { position: relative; width: 339mm; height: 239mm; margin: 0 auto; background: white; color: #111; overflow: hidden; box-shadow: 0 1px 8px #0003; font-family: "Times New Roman", "Noto Serif CJK JP", "Yu Mincho", serif; font-size: 10.5pt; line-height: 1.12; }
+.certificate-paper { position: absolute; inset: 0; width: 339mm; height: 239mm; max-width: none; }
+.certificate-text-layer { position: absolute; inset: 0; }
+.certificate-value, .certificate-ancestor { position: absolute; overflow: hidden; }
+.certificate-value { white-space: nowrap; }
+.certificate-align-right { text-align: right; }
+.certificate-center { text-align: center; }
+.certificate-self-name { display: flex; align-items: center; justify-content: center; white-space: normal; text-align: center; font-weight: 600; font-size: 12pt; }
+.certificate-ancestor > div { overflow-wrap: anywhere; }
+.certificate-ancestor .certificate-title { min-height: 3.6mm; }
+.certificate-generation-1 { display: flex; flex-direction: column; padding-top: 1mm; }
+.certificate-generation-1 .certificate-title { min-height: 7mm; }
+.certificate-generation-1 .certificate-color { margin-top: 6mm; }
+.certificate-generation-1 .certificate-eye, .certificate-generation-1 .certificate-number { margin-top: 2mm; }
+.certificate-generation-1 .certificate-other { font-size: 9pt; }
+.certificate-generation-2 .certificate-title:empty { min-height: 3.6mm; }
+.certificate-generation-2 .certificate-name, .certificate-generation-2 .certificate-color, .certificate-generation-2 .certificate-number { margin-top: 1mm; }
+.certificate-generation-3 { font-size: 9.3pt; line-height: 1.05; display: flex; flex-direction: column; justify-content: flex-end; padding-bottom: .4mm; }
+.certificate-generation-3 .certificate-title { min-height: 0; }
+.certificate-generation-3 .certificate-number { white-space: nowrap; font-size: 8.7pt; }
+.certificate-duplicate { color: #2563eb; }
+@media print {
+  html, body { width: 339mm; height: 239mm; margin: 0 !important; padding: 0 !important; background: white !important; }
+  .app-header, .print-controls { display: none !important; }
+  .app-main, .print-view, .certificate-scroll { display: block; width: 339mm; margin: 0 !important; padding: 0 !important; overflow: visible; }
+  .print-certificate { margin: 0; box-shadow: none; break-inside: avoid; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  .print-certificate:not(.include-paper) .certificate-paper { visibility: hidden; }
+}

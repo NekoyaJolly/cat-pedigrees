@@ -4,7 +4,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 
 const prismaClientSingleton = () => {
   const connectionString = process.env.DATABASE_URL;
-  const pool = new Pool({ connectionString });
+  // 接続先はサーバー専用の設定から読み、待ち時間と接続数を制限する。
+  if (!connectionString) throw new Error('データベースの接続設定がありません。');
+  const pool = new Pool({ connectionString, max: Number(process.env.DATABASE_POOL_MAX || '5'), connectionTimeoutMillis: 10000, idleTimeoutMillis: 30000 });
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 };

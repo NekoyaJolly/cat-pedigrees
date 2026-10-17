@@ -1,24 +1,24 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { Pedigree } from '@prisma/client';
+import React, { useLayoutEffect, useState } from 'react';
+import type { Pedigree } from '@prisma/client';
 import { usePedigreeStore } from '@/store/usePedigreeStore';
-import PedigreeForm from './PedigreeForm';
+import PedigreeForm, { type PedigreeMasters } from './PedigreeForm';
 
 export default function PedigreeFormContainer({ 
-  initialData 
+  initialData, masters, canWrite,
 }: { 
-  initialData?: Partial<Pedigree> 
+  initialData: Partial<Pedigree>;
+  masters: PedigreeMasters;
+  canWrite: boolean;
 }) {
   const setFormData = usePedigreeStore((state) => state.setFormData);
 
-  useEffect(() => {
-    if (initialData) {
-      setFormData(initialData);
-    } else {
-      setFormData({}); // Reset for new form
-    }
+  const [ready, setReady] = useState(false);
+  useLayoutEffect(() => {
+    setFormData(initialData);
+    setReady(true);
   }, [initialData, setFormData]);
 
-  return <PedigreeForm />;
+  return ready ? <PedigreeForm masters={masters} canWrite={canWrite} /> : <p role="status">血統情報を開いています…</p>;
 }

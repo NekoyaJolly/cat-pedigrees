@@ -1,12 +1,13 @@
 import { create } from 'zustand';
-import { Pedigree } from '@prisma/client';
+import type { Pedigree } from '@prisma/client';
+import type { ParentRecord } from '@/lib/pedigree-fields';
 import { AncestryRole, mapParentRecordToAncestryFields } from '@/utils/generationMapper';
 
 interface PedigreeState {
   formData: Partial<Pedigree>;
-  updateField: (field: keyof Pedigree, value: any) => void;
+  updateField: <K extends keyof Pedigree>(field: K, value: Pedigree[K]) => void;
   setFormData: (data: Partial<Pedigree>) => void;
-  mergeAncestryData: (parentRecord: Pedigree, role: AncestryRole) => void;
+  mergeAncestryData: (parentRecord: ParentRecord, role: AncestryRole) => void;
   resetForm: () => void;
 }
 
