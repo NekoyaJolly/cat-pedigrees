@@ -1,4 +1,4 @@
-import { Pedigree } from '@prisma/client';
+import type { Pedigree } from '@prisma/client';
 
 export type PedigreeNode = {
   relation: string;
@@ -13,12 +13,7 @@ export type PedigreeNode = {
 };
 
 export function transformToPedigreeTree(pedigree: Pedigree): PedigreeNode {
-  // Helper to safely extract values that might not exist on all generation levels
-  const extract = <T, K extends keyof T>(obj: T, key: K): T[K] | null => {
-    return obj[key] !== undefined ? obj[key] : null;
-  };
-
-  // Generation 3: Great-Grandparents
+  // 曾祖父母の8頭。
   const fff: PedigreeNode = {
     relation: 'fff',
     title: pedigree.fffTitle,
@@ -84,7 +79,7 @@ export function transformToPedigreeTree(pedigree: Pedigree): PedigreeNode {
     parents: [],
   };
 
-  // Generation 2: Grandparents
+  // 祖父母の4頭。
   const ff: PedigreeNode = {
     relation: 'ff',
     title: pedigree.ffTitle,
@@ -118,7 +113,7 @@ export function transformToPedigreeTree(pedigree: Pedigree): PedigreeNode {
     parents: [mmf, mmm],
   };
 
-  // Generation 1: Parents
+  // 父母の2頭。
   const father: PedigreeNode = {
     relation: 'father',
     title: pedigree.fatherTitle,
@@ -142,9 +137,7 @@ export function transformToPedigreeTree(pedigree: Pedigree): PedigreeNode {
     parents: [mf, mm],
   };
 
-  // Generation 0: Self
-  // For self, coatColor is represented as string of the ID if needed, 
-  // but ideally it would be joined with the CoatColor table. We return the code as string or null.
+  // 本猫を根にして、3世代のツリーを返す。
   const self: PedigreeNode = {
     relation: 'self',
     title: pedigree.title,

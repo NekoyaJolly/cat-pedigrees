@@ -1,13 +1,8 @@
-import { Pedigree } from '@prisma/client';
+import type { Pedigree } from '@prisma/client';
 
-/**
- * Scans the form data for duplicate identifier fields (JCU numbers, pedigree IDs).
- * Returns a Set of duplicated strings.
- * If a field's value is in the Set, it means it appears more than once in the ancestry tree.
- */
+// 祖先14頭のナンバーを比較し、重複した文字列を返す。
 export function getDuplicateIdentifiers(formData: Partial<Pedigree>): Set<string> {
   const fieldsToCheck: (keyof Pedigree)[] = [
-    'pedigreeId',
     'fatherJCU',
     'motherJCU',
     'ffjcu',

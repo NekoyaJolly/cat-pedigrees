@@ -1,274 +1,178 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import type { Pedigree } from '@prisma/client';
 import { usePedigreeStore } from '@/store/usePedigreeStore';
 import { FormInput } from './FormInput';
 import { getDuplicateIdentifiers } from '@/utils/duplicateChecker';
-import { getPedigreeByJcu } from '@/actions/pedigreeActions';
+import { getPedigreeByKey, savePedigree } from '@/actions/pedigreeActions';
 import { generateCatCompositeId } from '@/utils/idGenerator';
-import { Pedigree } from '@prisma/client';
+import { ancestryOf, siblingDraft, type TextField, type NumberField } from '@/lib/pedigree-fields';
 
-export default function PedigreeForm() {
-  const { formData, updateField, mergeAncestryData } = usePedigreeStore();
+export interface MasterOption { code: number; name: string }
+export interface PedigreeMasters { breeds: MasterOption[]; colors: MasterOption[]; genders: MasterOption[] }
+type SaveMode = 'save' | 'print' | 'sibling';
+type LookupRole = 'self' | 'shared' | 'father' | 'mother';
+interface AncestorGroup { title: string; side: 'father' | 'mother'; fields: readonly (readonly [TextField, string])[] }
+
+// 入力順はAccessの本猫情報と3世代の並びを引き継ぐ。
+const generations: readonly AncestorGroup[][] = [
+  [
+    { title: '父', side: 'father', fields: [['fatherTitle','称号'],['fatherCatName','名前'],['fatherEyeColor','目色'],['fatherCoatColor','色柄'],['fatherJCU','ナンバー']] },
+    { title: '母', side: 'mother', fields: [['motherTitle','称号'],['motherCatName','名前'],['motherEyeColor','目色'],['motherCoatColor','色柄'],['motherJCU','ナンバー']] },
+  ],
+  [
+    { title: '父の父', side: 'father', fields: [['ffTitle','称号'],['ffCatName','名前'],['ffCatColor','色柄'],['ffjcu','ナンバー']] },
+    { title: '父の母', side: 'father', fields: [['fmTitle','称号'],['fmCatName','名前'],['fmCatColor','色柄'],['fmjcu','ナンバー']] },
+    { title: '母の父', side: 'mother', fields: [['mfTitle','称号'],['mfCatName','名前'],['mfCatColor','色柄'],['mfjcu','ナンバー']] },
+    { title: '母の母', side: 'mother', fields: [['mmTitle','称号'],['mmCatName','名前'],['mmCatColor','色柄'],['mmjcu','ナンバー']] },
+  ],
+  [
+    { title: '父・父の父', side: 'father', fields: [['fffTitle','称号'],['fffCatName','名前'],['fffjcu','ナンバー']] },
+    { title: '父・父の母', side: 'father', fields: [['ffmTitle','称号'],['ffmCatName','名前'],['ffmjcu','ナンバー']] },
+    { title: '父・母の父', side: 'father', fields: [['fmfTitle','称号'],['fmfCatName','名前'],['fmfjcu','ナンバー']] },
+    { title: '父・母の母', side: 'father', fields: [['fmmTitle','称号'],['fmmCatName','名前'],['fmmjcu','ナンバー']] },
+    { title: '母・父の父', side: 'mother', fields: [['mffTitle','称号'],['mffCatName','名前'],['mffjcu','ナンバー']] },
+    { title: '母・父の母', side: 'mother', fields: [['mfmTitle','称号'],['mfmCatName','名前'],['mfmjcu','ナンバー']] },
+    { title: '母・母の父', side: 'mother', fields: [['mmfTitle','称号'],['mmfCatName','名前'],['mmfjcu','ナンバー']] },
+    { title: '母・母の母', side: 'mother', fields: [['mmmTitle','称号'],['mmmCatName','名前'],['mmmjcu','ナンバー']] },
+  ],
+];
+
+export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeMasters; canWrite: boolean }) {
+  const { formData, updateField, setFormData, mergeAncestryData } = usePedigreeStore();
   const duplicates = useMemo(() => getDuplicateIdentifiers(formData), [formData]);
-  const [loadingParent, setLoadingParent] = useState<'father' | 'mother' | null>(null);
-  const [openSection, setOpenSection] = useState<'gen1' | 'gen2' | 'gen3' | null>('gen1');
+  const [lookup, setLookup] = useState<Record<LookupRole, string>>({ self: '', shared: '', father: '', mother: '' });
+  const [loading, setLoading] = useState<LookupRole | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [mode, setMode] = useState<SaveMode>('save');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const requestId = useRef<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, field: keyof Pedigree) => {
-    updateField(field, e.target.value);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  const changeText = (event: ChangeEvent<HTMLInputElement>, field: TextField) => {
+    updateField(field, event.target.value); setDirty(true); setMessage('');
+  };
+  const changeNumber = (event: ChangeEvent<HTMLInputElement>, field: NumberField) => {
+    updateField(field, event.target.value === '' ? null : Number(event.target.value)); setDirty(true); setMessage('');
   };
 
-  const handleFetchParent = async (jcu: string, role: 'father' | 'mother') => {
-    if (!jcu) return;
-    setLoadingParent(role);
+  async function fetchCat(role: LookupRole) {
+    const key = lookup[role].trim();
+    if (!key || loading) return;
+    if (!/^\d{1,10}$/.test(key)) { setError('呼び出す猫の数字IDを入力してください。'); return; }
+    if (dirty && role === 'self' && !window.confirm('入力中の内容を置き換えて、指定した猫を開きますか？')) return;
+    setLoading(role); setError(''); setMessage('');
     try {
-      const parentRecord = await getPedigreeByJcu(jcu);
-      if (parentRecord) {
-        mergeAncestryData(parentRecord, role);
+      const record = await getPedigreeByKey(key);
+      if (!record) { setError('そのIDの猫が見つかりませんでした。'); return; }
+      if (role === 'self') { setFormData(record); setDirty(false); setSavedId(null); requestId.current = null; window.history.replaceState(null,'','/pedigrees/' + record.id); }
+      else if (role === 'shared') { setFormData({ ...formData, ...ancestryOf(record) }); setDirty(true); }
+      else { mergeAncestryData(record, role); setDirty(true); }
+      setMessage('指定した猫の情報を呼び出しました。');
+    } catch { setError('猫の情報を呼び出せませんでした。通信を確認して、もう一度お試しください。'); }
+    finally { setLoading(null); }
+  }
+
+  async function save() {
+    if (saving || loading || !canWrite) return;
+    const printWindow = mode !== 'save' ? window.open('about:blank', '_blank') : null;
+    if (printWindow) printWindow.opener = null;
+    setSaving(true); setError(''); setMessage('');
+    requestId.current ??= crypto.randomUUID();
+    try {
+      const result = await savePedigree({ recordId: formData.id, expectedUpdatedAt: formData.updatedAt ? new Date(formData.updatedAt).toISOString() : undefined, requestId: requestId.current, draft: formData });
+      if (!result.ok) { printWindow?.close(); setError(result.message); return; }
+      const record = result.record;
+      setSavedId(record.id); setDirty(false); requestId.current = null;
+      if (printWindow) printWindow.location.href = '/pedigrees/' + record.id + '/print';
+      if (mode === 'sibling') {
+        setFormData(siblingDraft(record));
+        window.history.replaceState(null,'','/pedigrees/new');
+        setMessage('ID ' + record.pedigreeId + ' を保存しました。父母などを引き継いで、次の猫を登録できます。');
       } else {
-        alert(`${role} record not found for JCU: ${jcu}`);
+        setFormData(record); window.history.replaceState(null,'','/pedigrees/' + record.id); setMessage('ID ' + record.pedigreeId + ' を保存しました。');
       }
-    } catch (error) {
-      console.error(error);
-      alert('Error fetching parent data');
-    } finally {
-      setLoadingParent(null);
-    }
-  };
+    } catch { printWindow?.close(); setError('保存結果を確認できませんでした。入力内容を残しています。同じ画面からもう一度保存してください。'); }
+    finally { setSaving(false); }
+  }
 
-  const compositeId = generateCatCompositeId(
-    formData.breedCode,
-    formData.coatColorCode,
-    formData.genderCode,
-    formData.pedigreeId
-  );
+  function newCat() {
+    window.location.href = '/pedigrees/new';
+  }
 
-  return (
-    <div className="bg-gray-100 p-4 text-sm max-w-5xl mx-auto border border-gray-400">
-      
-      {/* Header and Action Buttons */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-800">新規登録 (New Pedigree)</h2>
-        <div className="flex gap-2">
-          <button className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded shadow text-sm font-medium">新規登録</button>
-          <button className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-1.5 rounded shadow text-sm font-medium">登録</button>
-        </div>
-      </div>
+  const compositeId = formData.pedigreeId ? generateCatCompositeId(formData.breedCode, formData.coatColorCode, formData.genderCode, formData.pedigreeId) : '';
+  const input = (field: TextField, label: string) => <FormInput key={field} label={label} value={formData[field] ?? ''} maxLength={field === 'notes' || field === 'notes2' ? 2000 : 500} onChange={event => changeText(event, field)} isDuplicate={duplicates.has(String(formData[field] ?? '').trim())} />;
+  const master = (field: 'breedCode' | 'coatColorCode' | 'genderCode', label: string, values: MasterOption[]) => <div key={field}>
+    <FormInput label={label} type="number" min="0" list={field + '-options'} value={formData[field] ?? ''} onChange={event => changeNumber(event, field)} />
+    <datalist id={field + '-options'}>{values.map(value => <option key={value.code} value={value.code}>{value.name}</option>)}</datalist>
+    <div className="border-b border-r border-gray-400 bg-white/50 px-2 py-1 text-xs text-gray-600">{values.find(value => value.code === formData[field])?.name || 'コードを選ぶと名称を表示します'}</div>
+  </div>;
 
-      <div className="w-full pb-2">
-        <div className="min-w-full md:min-w-[900px]">
-          {/* Top Section: Self Info */}
-          <div className="bg-white mb-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-t border-l border-gray-400">
-              
-              {/* Col 1: ID, Name, Breed, Color */}
-              <div className="flex flex-col flex-1">
-                <div className="flex">
-                  <FormInput label="本猫ID" value={formData.pedigreeId || ''} onChange={(e) => handleChange(e, 'pedigreeId')} isDuplicate={duplicates.has(formData.pedigreeId || '')} className="flex-[2]" />
-                  <FormInput label="性別" value={formData.genderCode || ''} onChange={(e) => updateField('genderCode', parseInt(e.target.value) || null)} type="number" className="flex-1" />
-                </div>
-                <FormInput label="名前" value={formData.catName || ''} onChange={(e) => handleChange(e, 'catName')} />
-                <FormInput label="猫種" value={formData.breedCode || ''} onChange={(e) => updateField('breedCode', parseInt(e.target.value) || null)} type="number" />
-                <FormInput label="色柄" value={formData.coatColorCode || ''} onChange={(e) => updateField('coatColorCode', parseInt(e.target.value) || null)} type="number" />
-              </div>
-              
-              {/* Col 2: Birthday, Eye, Breeder, Owner, Registration */}
-              <div className="flex flex-col flex-1">
-                <FormInput label="誕生日" value={formData.birthDate || ''} onChange={(e) => handleChange(e, 'birthDate')} />
-                <FormInput label="目色" value={formData.eyeColor || ''} onChange={(e) => handleChange(e, 'eyeColor')} />
-                <FormInput label="繁殖者" value={formData.breederName || ''} onChange={(e) => handleChange(e, 'breederName')} />
-                <FormInput label="所有者" value={formData.ownerName || ''} onChange={(e) => handleChange(e, 'ownerName')} />
-                <FormInput label="登録日" value={formData.registrationDate || ''} onChange={(e) => handleChange(e, 'registrationDate')} />
-              </div>
-              
-              {/* Col 3: Siblings, Notes, Other No */}
-              <div className="flex flex-col flex-1">
-                <div className="flex">
-                  <FormInput label="兄弟M" value={formData.brotherCount || ''} onChange={(e) => updateField('brotherCount', parseInt(e.target.value) || null)} type="number" className="flex-1 w-1/2" />
-                  <FormInput label="姉妹F" value={formData.sisterCount || ''} onChange={(e) => updateField('sisterCount', parseInt(e.target.value) || null)} type="number" className="flex-1 w-1/2 border-l-0" />
-                </div>
-                <FormInput label="摘要1" value={formData.notes || ''} onChange={(e) => handleChange(e, 'notes')} />
-                <FormInput label="摘要2" value={formData.notes2 || ''} onChange={(e) => handleChange(e, 'notes2')} />
-                <FormInput label="他No" value={formData.otherNo || ''} onChange={(e) => handleChange(e, 'otherNo')} />
-                <FormInput label="本猫No" value={compositeId} readOnly className="bg-gray-100" />
-              </div>
-
-            </div>
-          </div>
-
-          {/* 3-Generation Tree Section */}
-          <div className="flex flex-col md:grid md:grid-cols-3 gap-0 border-gray-400">
-            
-            {/* Gen 1: Call ID & Parents */}
-            <div className="flex flex-col h-full">
-              <button className="md:hidden flex justify-between items-center bg-gray-200 hover:bg-gray-300 p-2 font-bold text-sm border-b border-r border-gray-400 w-full text-left text-red-600 transition-colors" onClick={() => setOpenSection(openSection === 'gen1' ? null : 'gen1')}>
-                <span>🐾 Generation 1 (父母)</span>
-                <span>{openSection === 'gen1' ? '▲' : '▼'}</span>
-              </button>
-              
-              <div className={`${openSection === 'gen1' ? 'flex' : 'hidden'} md:!flex flex-col flex-1 h-full`}>
-                
-                {/* Paternal Half (Top) */}
-                <div className="flex-1 flex flex-col justify-end">
-                  {/* Father (Gen 1) at the bottom */}
-                  <div className="flex flex-col">
-                    <div className="font-bold text-red-600 text-xs px-2 py-1 hidden md:block">🐾 Generation_1</div>
-                    <div className="bg-blue-200 flex flex-col border-t border-l border-gray-400">
-                      <FormInput label="FCH登録" value={formData.fatherTitle || ''} onChange={(e) => handleChange(e, 'fatherTitle')} />
-                      <FormInput label="F名前" value={formData.fatherCatName || ''} onChange={(e) => handleChange(e, 'fatherCatName')} />
-                      <FormInput label="F目色" value={formData.fatherEyeColor || ''} onChange={(e) => handleChange(e, 'fatherEyeColor')} />
-                      <FormInput label="F色柄" value={formData.fatherCoatColor || ''} onChange={(e) => handleChange(e, 'fatherCoatColor')} />
-                      <FormInput label="Fナンバー" value={formData.fatherJCU || ''} onChange={(e) => handleChange(e, 'fatherJCU')} isDuplicate={duplicates.has(formData.fatherJCU || '')} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Maternal Half (Bottom) */}
-                <div className="flex-1 flex flex-col justify-start">
-                  {/* Mother (Gen 1) at the top */}
-                  <div className="bg-pink-200 flex flex-col border-l border-gray-400">
-                    <FormInput label="MCH登録" value={formData.motherTitle || ''} onChange={(e) => handleChange(e, 'motherTitle')} />
-                    <FormInput label="M名前" value={formData.motherCatName || ''} onChange={(e) => handleChange(e, 'motherCatName')} />
-                    <FormInput label="M目色" value={formData.motherEyeColor || ''} onChange={(e) => handleChange(e, 'motherEyeColor')} />
-                    <FormInput label="M色柄" value={formData.motherCoatColor || ''} onChange={(e) => handleChange(e, 'motherCoatColor')} />
-                    <FormInput label="Mナンバー" value={formData.motherJCU || ''} onChange={(e) => handleChange(e, 'motherJCU')} isDuplicate={duplicates.has(formData.motherJCU || '')} />
-                  </div>
-                  {/* Spacer for alignment */}
-                  <div className="font-bold text-transparent text-xs px-2 py-1 hidden md:block pointer-events-none select-none">🐾</div>
-                  {/* Empty space below Mother with cat silhouette */}
-                  <div className="flex-1 bg-transparent relative overflow-hidden hidden md:block">
-                      <span className="absolute bottom-4 right-4 text-gray-300 text-8xl opacity-30 select-none">🐈‍⬛</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Gen 2: Grandparents */}
-            <div className="flex flex-col h-full">
-              <button className="md:hidden flex justify-between items-center bg-gray-200 hover:bg-gray-300 p-2 font-bold text-sm border-b border-r border-gray-400 w-full text-left text-red-600 transition-colors" onClick={() => setOpenSection(openSection === 'gen2' ? null : 'gen2')}>
-                <span>🐾 Generation 2 (祖父母)</span>
-                <span>{openSection === 'gen2' ? '▲' : '▼'}</span>
-              </button>
-              
-              <div className={`${openSection === 'gen2' ? 'flex' : 'hidden'} md:!flex flex-col flex-1 h-full`}>
-                
-                {/* Paternal Half */}
-                <div className="flex-1 flex flex-col justify-between">
-                  {/* Top Group: Spacer + Call ID Block */}
-                  <div>
-                    {/* Spacer to align Call ID perfectly with Gen 3 inputs */}
-                    <div className="font-bold text-transparent text-xs px-2 py-1 hidden md:block pointer-events-none select-none">🐾 Spacer</div>
-                    
-                    {/* Call ID Block (Moved from Gen 1) */}
-                    <div className="bg-transparent flex flex-col border-t border-l border-gray-400 md:-ml-[1px]">
-                      <FormInput label="両親ID" placeholder="未実装" disabled className="opacity-50" />
-                      <div className="flex relative">
-                        <FormInput label="父猫ID" value={formData.fatherJCU || ''} onChange={(e) => handleChange(e, 'fatherJCU')} onBlur={(e) => handleFetchParent(e.target.value, 'father')} isDuplicate={duplicates.has(formData.fatherJCU || '')} className="flex-1" />
-                        {loadingParent === 'father' && <span className="absolute right-2 top-3 text-xs text-blue-500 font-bold z-20">Loading...</span>}
-                      </div>
-                      <div className="flex relative">
-                        <FormInput label="母猫ID" value={formData.motherJCU || ''} onChange={(e) => handleChange(e, 'motherJCU')} onBlur={(e) => handleFetchParent(e.target.value, 'mother')} isDuplicate={duplicates.has(formData.motherJCU || '')} className="flex-1" />
-                        {loadingParent === 'mother' && <span className="absolute right-2 top-3 text-xs text-pink-500 font-bold z-20">Loading...</span>}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col mt-auto">
-                    <div className="font-bold text-red-600 text-xs px-2 py-1 hidden md:block">🐾 Generation_2</div>
-                    <div className="bg-blue-100 flex flex-col border-t border-l border-gray-400 md:-ml-[1px]"><Gen2Block prefix="FF" formData={formData} handleChange={handleChange} duplicates={duplicates} /></div>
-                    <div className="bg-blue-100 flex flex-col border-l border-gray-400 md:-ml-[1px]"><Gen2Block prefix="FM" formData={formData} handleChange={handleChange} duplicates={duplicates} /></div>
-                  </div>
-                </div>
-
-                {/* Maternal Half */}
-                <div className="flex-1 flex flex-col justify-start">
-                  <div className="bg-pink-100 flex flex-col border-l border-gray-400 md:-ml-[1px]"><Gen2Block prefix="MF" formData={formData} handleChange={handleChange} duplicates={duplicates} /></div>
-                  <div className="bg-pink-100 flex flex-col border-l border-gray-400 md:-ml-[1px]"><Gen2Block prefix="MM" formData={formData} handleChange={handleChange} duplicates={duplicates} /></div>
-                  {/* Spacer for alignment */}
-                  <div className="font-bold text-transparent text-xs px-2 py-1 hidden md:block pointer-events-none select-none">🐾</div>
-                  <div className="flex-1 bg-transparent hidden md:block"></div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Gen 3: Great-Grandparents */}
-            <div className="flex flex-col h-full">
-              <button className="md:hidden flex justify-between items-center bg-gray-200 hover:bg-gray-300 p-2 font-bold text-sm border-b border-r border-gray-400 w-full text-left text-red-600 transition-colors" onClick={() => setOpenSection(openSection === 'gen3' ? null : 'gen3')}>
-                <span>🐾 Generation 3 (曾祖父母)</span>
-                <span>{openSection === 'gen3' ? '▲' : '▼'}</span>
-              </button>
-              
-              <div className={`${openSection === 'gen3' ? 'flex' : 'hidden'} md:!flex flex-col flex-1 h-full`}>
-                
-                {/* Paternal Half */}
-                <div className="flex-1 flex flex-col justify-end">
-                  <div className="font-bold text-red-600 text-xs px-2 py-1 hidden md:block">🐾 Generation_3</div>
-                  <Gen3Block prefix="FFF" formData={formData} handleChange={handleChange} duplicates={duplicates} bgClass="bg-blue-50 border-t border-l border-gray-400 md:-ml-[1px]" />
-                  <Gen3Block prefix="FFM" formData={formData} handleChange={handleChange} duplicates={duplicates} bgClass="bg-blue-50 border-l border-gray-400 md:-ml-[1px]" />
-                  <Gen3Block prefix="FMF" formData={formData} handleChange={handleChange} duplicates={duplicates} bgClass="bg-blue-50 border-l border-gray-400 md:-ml-[1px]" />
-                  <Gen3Block prefix="FMM" formData={formData} handleChange={handleChange} duplicates={duplicates} bgClass="bg-blue-50 border-l border-gray-400 md:-ml-[1px]" />
-                </div>
-
-                {/* Maternal Half */}
-                <div className="flex-1 flex flex-col justify-start">
-                  <Gen3Block prefix="MFF" formData={formData} handleChange={handleChange} duplicates={duplicates} bgClass="bg-pink-50 border-l border-gray-400 md:-ml-[1px]" />
-                  <Gen3Block prefix="MFM" formData={formData} handleChange={handleChange} duplicates={duplicates} bgClass="bg-pink-50 border-l border-gray-400 md:-ml-[1px]" />
-                  <Gen3Block prefix="MMF" formData={formData} handleChange={handleChange} duplicates={duplicates} bgClass="bg-pink-50 border-l border-gray-400 md:-ml-[1px]" />
-                  <Gen3Block prefix="MMM" formData={formData} handleChange={handleChange} duplicates={duplicates} bgClass="bg-pink-50 border-l border-gray-400 md:-ml-[1px]" />
-                  {/* Spacer for alignment */}
-                  <div className="font-bold text-transparent text-xs px-2 py-1 hidden md:block pointer-events-none select-none">🐾</div>
-                  <div className="flex-1 bg-transparent hidden md:block"></div>
-                </div>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
+  return <div className="mx-auto w-full max-w-6xl bg-gray-100 p-3 text-sm md:p-4">
+    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <h1 className="text-lg font-bold">{formData.id ? '血統情報の編集' : '血統情報の新規登録'}</h1>
+      <div className="flex flex-wrap items-center gap-2">
+        {formData.id ? <a className="action-secondary" href={'/pedigrees/new?sibling=' + formData.id}>きょうだいを登録</a> : null}
+        <button type="button" className="action-secondary" onClick={newCat} disabled={saving}>新しい猫</button>
+        {formData.id ? <a className="action-secondary" href={'/pedigrees/' + formData.id + '/print'} target="_blank" rel="noreferrer">印刷</a> : null}
       </div>
     </div>
-  );
+    <div className="mb-4 grid grid-cols-2 gap-2 md:grid-cols-4">
+      {(['self','shared','father','mother'] as const).map(role => <div key={role}>
+        <label className="mb-1 block text-xs font-medium" htmlFor={'lookup-' + role}>{({ self: '本猫を呼び出すID', shared: '両親ID', father: '父猫ID', mother: '母猫ID' })[role]}</label>
+        <div className="flex gap-1">
+          <input id={'lookup-' + role} className="w-full min-w-0 rounded border border-gray-400 bg-white px-2 py-2" inputMode="numeric" value={lookup[role]} disabled={saving || loading !== null} onChange={event => setLookup({ ...lookup, [role]: event.target.value })} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void fetchCat(role); } }} />
+          <button type="button" className="action-secondary whitespace-nowrap" disabled={saving || loading !== null || !lookup[role]} onClick={() => void fetchCat(role)}>呼出</button>
+        </div>
+      </div>)}
+    </div>
+    {loading ? <p role="status" className="mb-3">猫の情報を呼び出しています…</p> : null}
+    {error ? <p role="alert" className="mb-3 rounded border border-red-300 bg-red-50 p-3 text-red-800">{error}</p> : null}
+    {message ? <div role="status" className="mb-3 rounded border border-green-300 bg-green-50 p-3 text-green-900">{message} {savedId ? <a className="underline" href={'/pedigrees/' + savedId + '/print'} target="_blank" rel="noreferrer">印刷画面を開く</a> : null}</div> : null}
+    {!canWrite ? <p className="mb-3 text-amber-800">現在は閲覧用です。</p> : null}
+    <fieldset disabled={saving || loading !== null || !canWrite} className="min-w-0">
+      <div className="mb-4 grid grid-cols-1 border-l border-t border-gray-400 bg-white md:grid-cols-3">
+        <div>
+          <div className="flex"><FormInput label="本猫ID" value={formData.pedigreeId || ''} placeholder="保存時に決まります" readOnly className="flex-1" />{master('genderCode','性別',masters.genders)}</div>
+          {input('catName','名前')}{input('catName2','名前の続き')}
+          {master('breedCode','猫種',masters.breeds)}{master('coatColorCode','色柄',masters.colors)}
+        </div>
+        <div>{input('birthDate','誕生日')}{input('eyeColor','目色')}{input('breederName','繁殖者')}{input('ownerName','所有者')}{input('registrationDate','登録日')}</div>
+        <div>
+          <div className="flex">{(['brotherCount','sisterCount'] as const).map((field,index) => <FormInput key={field} label={index === 0 ? '兄弟 M' : '姉妹 F'} type="number" min="0" value={formData[field] ?? ''} className="min-w-0 flex-1" onChange={event => changeNumber(event,field)} />)}</div>
+          {input('title','称号')}{input('notes','摘要1')}{input('notes2','摘要2')}{input('otherNo','他団体No')}
+          <FormInput label="本猫ナンバー" value={compositeId} readOnly />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-0">
+        {generations.map((groups,index) => <section key={index} className="flex min-w-0 flex-col" aria-label={['父母','祖父母','曾祖父母'][index]}>
+          <h2 className="bg-gray-200 px-2 py-1 text-xs font-bold">{['父母','祖父母','曾祖父母'][index]}</h2>
+          <div className="flex flex-1 flex-col">
+            {groups.map(group => <div key={group.title} className={'flex flex-1 flex-col justify-center border-l border-t border-gray-400 ' + (group.side === 'father' ? 'bg-blue-50' : 'bg-rose-50')}>
+              <h3 className="border-b border-r border-gray-400 px-2 py-1 text-xs font-medium text-gray-600">{group.title}</h3>
+              {group.fields.map(([field,label]) => <FormInput key={field} label={group.title + ' ' + label} value={formData[field] ?? ''} onChange={event => changeText(event,field)} isDuplicate={duplicates.has(String(formData[field] ?? '').trim())} maxLength={500} />)}
+            </div>)}
+          </div>
+        </section>)}
+      </div>
+    </fieldset>
+    <div className="sticky bottom-0 mt-4 flex flex-wrap items-center justify-end gap-2 border-t border-gray-300 bg-gray-100 py-3">
+      {dirty ? <span className="mr-auto text-xs text-gray-600">未保存の変更があります</span> : null}
+      <label className="sr-only" htmlFor="save-mode">保存後の操作</label>
+      <select id="save-mode" className="max-w-full rounded border border-gray-400 bg-white p-2" value={mode} disabled={saving} onChange={event => setMode(event.target.value as SaveMode)}>
+        <option value="save">保存して内容を確認</option><option value="print">保存して印刷</option><option value="sibling">保存・印刷して、きょうだいを続ける</option>
+      </select>
+      <button type="button" className="action-primary" disabled={saving || loading !== null || !canWrite} onClick={() => void save()}>{saving ? '保存しています…' : '保存'}</button>
+    </div>
+  </div>;
 }
-
-const Gen2Block = ({ prefix, formData, handleChange, duplicates }: any) => {
-  const titleKey = `${prefix.toLowerCase()}Title` as keyof Pedigree;
-  const nameKey = `${prefix.toLowerCase()}CatName` as keyof Pedigree;
-  const colorKey = `${prefix.toLowerCase()}CatColor` as keyof Pedigree;
-  const jcuKey = `${prefix.toLowerCase()}jcu` as keyof Pedigree;
-  return (
-    <>
-      <FormInput label={`${prefix}-CH登録`} value={formData[titleKey] || ''} onChange={(e) => handleChange(e, titleKey)} />
-      <FormInput label={`${prefix}-名前`} value={formData[nameKey] || ''} onChange={(e) => handleChange(e, nameKey)} />
-      <FormInput label={`${prefix}-色柄`} value={formData[colorKey] || ''} onChange={(e) => handleChange(e, colorKey)} />
-      <FormInput label={`${prefix}-ナンバー`} value={formData[jcuKey] || ''} onChange={(e) => handleChange(e, jcuKey)} isDuplicate={duplicates.has(formData[jcuKey] || '')} />
-    </>
-  );
-};
-
-// Sub-component for Gen 3 blocks
-const Gen3Block = ({ 
-  prefix, 
-  formData, 
-  handleChange, 
-  duplicates,
-  bgClass
-}: { 
-  prefix: string, 
-  formData: any, 
-  handleChange: (e: React.ChangeEvent<HTMLInputElement>, field: keyof Pedigree) => void,
-  duplicates: Set<string>,
-  bgClass: string
-}) => {
-  const titleKey = `${prefix.toLowerCase()}Title` as keyof Pedigree;
-  const nameKey = `${prefix.toLowerCase()}CatName` as keyof Pedigree;
-  const jcuKey = `${prefix.toLowerCase()}jcu` as keyof Pedigree;
-
-  return (
-    <div className={`${bgClass} flex flex-col`}>
-      <FormInput label={`${prefix}-CH登録`} value={formData[titleKey] || ''} onChange={(e) => handleChange(e, titleKey)} />
-      <FormInput label={`${prefix}-名前`} value={formData[nameKey] || ''} onChange={(e) => handleChange(e, nameKey)} />
-      <FormInput label={`${prefix}-ナンバー`} value={formData[jcuKey] || ''} onChange={(e) => handleChange(e, jcuKey)} isDuplicate={duplicates.has(formData[jcuKey] || '')} />
-    </div>
-  );
-};

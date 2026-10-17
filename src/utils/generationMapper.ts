@@ -1,29 +1,28 @@
-import { Pedigree } from '@prisma/client';
+import type { Pedigree } from '@prisma/client';
+import type { ParentRecord } from '@/lib/pedigree-fields';
+import { generateCatCompositeId } from './idGenerator';
 
 export type AncestryRole = 'father' | 'mother';
 
-/**
- * Maps a fetched parent record (Pedigree) into the ancestry fields of the form.
- * This shifts the generation of the fetched record down by 1 relative to the current cat.
- */
+// 呼び出した猫を父または母に配置し、その祖先も1世代ずつ繰り下げる。
 export function mapParentRecordToAncestryFields(
-  parentRecord: Pedigree,
+  parentRecord: ParentRecord,
   role: AncestryRole
 ): Partial<Pedigree> {
   const mapped: Partial<Pedigree> = {};
 
   if (role === 'father') {
-    // Gen 1: The fetched record itself becomes the Father
+    // 呼び出した猫自身を父にする。
     mapped.fatherTitle = parentRecord.title;
     mapped.fatherCatName = parentRecord.catName;
     mapped.fatherCatName2 = parentRecord.catName2;
-    // Assuming coatColorCode might be used if actual string color isn't available
-    mapped.fatherCoatColor = parentRecord.coatColorCode ? String(parentRecord.coatColorCode) : null;
+    // 色柄はマスターの名称を引き継ぐ。
+    mapped.fatherCoatColor = parentRecord.coatColor?.name ?? null;
     mapped.fatherEyeColor = parentRecord.eyeColor;
-    mapped.fatherJCU = parentRecord.pedigreeId;
+    mapped.fatherJCU = generateCatCompositeId(parentRecord.breedCode, parentRecord.coatColorCode, parentRecord.genderCode, parentRecord.pedigreeId);
     mapped.fatherOtherCode = parentRecord.otherNo;
 
-    // Gen 2: Father's parents become Paternal Grandparents (FF, FM)
+    // 父の両親を祖父母にする。
     mapped.ffTitle = parentRecord.fatherTitle;
     mapped.ffCatName = parentRecord.fatherCatName;
     mapped.ffCatColor = parentRecord.fatherCoatColor;
@@ -34,7 +33,7 @@ export function mapParentRecordToAncestryFields(
     mapped.fmCatColor = parentRecord.motherCoatColor;
     mapped.fmjcu = parentRecord.motherJCU;
 
-    // Gen 3: Father's grandparents become Paternal Great-Grandparents (FFF, FFM, FMF, FMM)
+    // 父の祖父母を曾祖父母にする。
     mapped.fffTitle = parentRecord.ffTitle;
     mapped.fffCatName = parentRecord.ffCatName;
     mapped.fffCatColor = parentRecord.ffCatColor;
@@ -55,16 +54,16 @@ export function mapParentRecordToAncestryFields(
     mapped.fmmCatColor = parentRecord.mmCatColor;
     mapped.fmmjcu = parentRecord.mmjcu;
   } else if (role === 'mother') {
-    // Gen 1: The fetched record itself becomes the Mother
+    // 呼び出した猫自身を母にする。
     mapped.motherTitle = parentRecord.title;
     mapped.motherCatName = parentRecord.catName;
     mapped.motherCatName2 = parentRecord.catName2;
-    mapped.motherCoatColor = parentRecord.coatColorCode ? String(parentRecord.coatColorCode) : null; 
+    mapped.motherCoatColor = parentRecord.coatColor?.name ?? null;
     mapped.motherEyeColor = parentRecord.eyeColor;
-    mapped.motherJCU = parentRecord.pedigreeId;
+    mapped.motherJCU = generateCatCompositeId(parentRecord.breedCode, parentRecord.coatColorCode, parentRecord.genderCode, parentRecord.pedigreeId);
     mapped.motherOtherCode = parentRecord.otherNo;
 
-    // Gen 2: Mother's parents become Maternal Grandparents (MF, MM)
+    // 母の両親を祖父母にする。
     mapped.mfTitle = parentRecord.fatherTitle;
     mapped.mfCatName = parentRecord.fatherCatName;
     mapped.mfCatColor = parentRecord.fatherCoatColor;
@@ -75,7 +74,7 @@ export function mapParentRecordToAncestryFields(
     mapped.mmCatColor = parentRecord.motherCoatColor;
     mapped.mmjcu = parentRecord.motherJCU;
 
-    // Gen 3: Mother's grandparents become Maternal Great-Grandparents (MFF, MFM, MMF, MMM)
+    // 母の祖父母を曾祖父母にする。
     mapped.mffTitle = parentRecord.ffTitle;
     mapped.mffCatName = parentRecord.ffCatName;
     mapped.mffCatColor = parentRecord.ffCatColor;

@@ -1,13 +1,4 @@
-/**
- * Generates a composite ID for a cat for UI display.
- * Rules: breedCode(2 digits, zero-padded) + coatColorCode(3 digits, zero-padded) + genderCode(1 digit) + "-" + pedigreeId
- * 
- * @param breedCode - The breed code
- * @param coatColorCode - The coat color code
- * @param genderCode - The gender code
- * @param pedigreeId - The pedigree ID string
- * @returns The dynamically generated composite ID string
- */
+// Accessと同じく「猫種2桁・色柄3桁・性別1桁-本猫ID」を組み立てる。
 export function generateCatCompositeId(
   breedCode: number | null | undefined,
   coatColorCode: number | null | undefined,
