@@ -13,7 +13,7 @@
 | ビルド時間 | 接続確認を含むビルド完了ログで33秒 |
 | 接続DB | 既存のSupabase `pedigrees`（`hnhhfcityestinsvcdfw`） |
 | 登録・変更 | `PEDIGREE_WRITES_ENABLED=0`。現在は閲覧用 |
-| メールログイン | 公開先への戻り先設定が未完了。下記の設定が必要 |
+| メールログイン | 公開先への戻り先を設定・確認済み。本人のメールによる実機確認は未実施 |
 
 MyCats ProのVercelプロジェクトや別のDBへ置き換えていない。GitHubの`main`にもマージしていない。確認用のブランチから単体版を配置した。
 
@@ -41,17 +41,17 @@ https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021
 
 本番の血統データへの書き込みテストは行っていない。今回のDB設定は接続ユーザー、権限、RLSポリシー、内部関数の実行権限であり、血統データの行は変更していない。
 
-## 残っているログイン設定
+## 設定済みのログインURL
 
-Supabaseの[ログインURL設定](https://supabase.com/dashboard/project/hnhhfcityestinsvcdfw/auth/url-configuration)で、次を設定する。
+Supabaseの[ログインURL設定](https://supabase.com/dashboard/project/hnhhfcityestinsvcdfw/auth/url-configuration)で、次の2項目を保存済み。
 
 | 設定欄 | 値 |
 | --- | --- |
 | Site URL | `https://cat-pedigrees-git-feat-mobile-pedigree-ui-nekoya258.vercel.app` |
 | Redirect URLsに追加 | `https://cat-pedigrees-git-feat-mobile-pedigree-ui-nekoya258.vercel.app/auth/callback` |
 
-現在の戻り先が`http://localhost:3000`であることを、メールを送らない無効リンクの応答で確認した。Supabaseの認証URL設定は連携ツールに操作がなく、接続ブラウザーも2回タイムアウトしたため、この変更は実行できていない。
+利用者の承認を受けて別のブラウザー接続へ切り替え、既存アカウントでログインして設定した。画面上の保存結果に加え、メールを送らない無効リンクの応答がHTTP 303で上記の`/auth/callback`へ戻ることを確認した。変更前の`http://localhost:3000`には戻らない。この確認では実際のログインメール送信、認証完了、利用者アカウント作成は行っていない。
 
 利用できるメールアドレスは、Vercelの登録者のアドレスをサーバー設定へ登録済み。値は公開リポジトリに記載しない。他の利用者を追加する際は`PEDIGREE_ALLOWED_EMAILS`へアドレスを登録し、必要に応じてSupabaseのメール送信設定も確認する。
 
-上記設定後に、本人のメールでログインを確認する。実機のキーボード操作と台紙への試し刷りも残る。登録開始時は、接続先と利用者を確認したうえで`PEDIGREE_WRITES_ENABLED=1`にして再デプロイする。
+次に本人のメールでログインを確認する。実機のキーボード操作と台紙への試し刷りも残る。登録開始時は、接続先と利用者を確認したうえで`PEDIGREE_WRITES_ENABLED=1`にして再デプロイする。
