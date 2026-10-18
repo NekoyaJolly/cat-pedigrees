@@ -1,6 +1,9 @@
+/* 印刷書体を同梱し、端末に入っているフォントによる置き換えを防ぐ。 */
+@font-face { font-family: "Libre Baskerville"; src: url("/fonts/libre-baskerville.woff2") format("woff2"); font-style: normal; font-weight: 400 700; font-display: block; }
+@font-face { font-family: "Noto Serif JP"; src: url("/fonts/noto-serif-jp.woff2") format("woff2"); font-style: normal; font-weight: 400; font-display: block; }
 @page { size: 339mm 239mm; margin: 0; }
 .certificate-scroll { overflow: auto; padding: 1px; }
-.print-certificate { position: relative; width: 339mm; height: 239mm; margin: 0 auto; background: white; color: #111; overflow: hidden; box-shadow: 0 1px 8px #0003; font-family: "Times New Roman", "Noto Serif CJK JP", "Yu Mincho", serif; font-size: 10.5pt; line-height: 1.12; }
+.print-certificate { position: relative; width: 339mm; height: 239mm; margin: 0 auto; background: white; color: #111; overflow: hidden; box-shadow: 0 1px 8px #0003; font-family: "Libre Baskerville", "Noto Serif JP", serif; font-size: 10.5pt; line-height: 1.12; }
 .certificate-paper { position: absolute; inset: 0; width: 339mm; height: 239mm; max-width: none; }
 .certificate-text-layer { position: absolute; inset: 0; }
 .certificate-value, .certificate-ancestor { position: absolute; overflow: hidden; }

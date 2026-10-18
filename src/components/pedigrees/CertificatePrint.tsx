@@ -5,7 +5,7 @@ import type { PedigreeWithRelations } from '@/actions/pedigreeActions';
 import { getDuplicateIdentifiers } from '@/utils/duplicateChecker';
 import { generateCatCompositeId } from '@/utils/idGenerator';
 import { transformToPedigreeTree, type PedigreeNode } from '@/utils/pedigreeTransformer';
-import { renderCertificatePdf } from '@/utils/certificatePdf';
+import { loadCertificateFonts, renderCertificatePdf } from '@/utils/certificatePdf';
 import './certificate-print.css';
 
 interface Position { x: number; y: number; width: number; height?: number }
@@ -44,19 +44,26 @@ export default function CertificatePrint({ record }: { record: PedigreeWithRelat
   const [includePaper, setIncludePaper] = useState(false);
   const [overflow, setOverflow] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [fontsReady, setFontsReady] = useState(false);
   const [error, setError] = useState('');
   const certificate = useRef<HTMLDivElement>(null);
   const tree = transformToPedigreeTree(record);
   const duplicates = getDuplicateIdentifiers(record);
 
   useEffect(() => {
+    let active = true;
     try {
       const saved = JSON.parse(localStorage.getItem('pedigree-print-offset-v1') || 'null') as { x: number; y: number } | null;
       if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y) && Math.abs(saved.x) <= 10 && Math.abs(saved.y) <= 10) setOffset(saved);
     } catch { /* 保存済みの位置が読めない場合は、基準位置を使う。 */ }
-    void document.fonts.ready.then(() => {
-      setOverflow([...document.querySelectorAll<HTMLElement>('.certificate-ancestor, .certificate-value')].some(element => element.scrollHeight > element.clientHeight + 1 || element.scrollWidth > element.clientWidth + 1));
+    void loadCertificateFonts().then(() => {
+      if (!active || !certificate.current) return;
+      setFontsReady(true);
+      setOverflow([...certificate.current.querySelectorAll<HTMLElement>('.certificate-ancestor, .certificate-value')].some(element => element.scrollHeight > element.clientHeight + 1 || element.scrollWidth > element.clientWidth + 1));
+    }).catch(() => {
+      if (active) setError('印刷書体を読み込めませんでした。ページを再読み込みしてください。');
     });
+    return () => { active = false; };
   }, []);
 
   function adjust(axis: 'x' | 'y', value: string) {
@@ -66,7 +73,7 @@ export default function CertificatePrint({ record }: { record: PedigreeWithRelat
     try { localStorage.setItem('pedigree-print-offset-v1', JSON.stringify(next)); } catch { /* 保存できない端末でも今回の調整は使える。 */ }
   }
   async function downloadPdf() {
-    if (!certificate.current || generating) return;
+    if (!certificate.current || generating || !fontsReady) return;
     setGenerating(true); setError('');
     try {
       const data = await renderCertificatePdf(certificate.current,includePaper);
@@ -77,10 +84,11 @@ export default function CertificatePrint({ record }: { record: PedigreeWithRelat
     finally { setGenerating(false); }
   }
   const value = (text: string | number | null | undefined, x: number, y: number, width: number, height = 5, className = '') => <div className={'certificate-value ' + className} style={mm({ x, y, width, height })}>{text ?? ''}</div>;
+  const pdfButtonLabel = generating ? 'PDFを作成中…' : fontsReady ? 'PDF保存（339×239mm）' : error ? '書体を確認してください' : '書体を読み込み中…';
 
   return <div className="print-view">
     <div className="print-controls mx-auto mb-5 max-w-5xl rounded border bg-white p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h1 className="text-lg font-bold">血統書の印刷 · ID {record.pedigreeId}</h1><div className="flex flex-wrap gap-2"><a href={'/pedigrees/' + record.id} className="action-secondary">内容を編集</a><button className="action-secondary" onClick={() => window.print()}>印刷</button><button className="action-primary" disabled={generating} onClick={() => void downloadPdf()}>{generating ? 'PDFを作成中…' : 'PDF保存（339×239mm）'}</button></div></div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><h1 className="text-lg font-bold">血統書の印刷 · ID {record.pedigreeId}</h1><div className="flex flex-wrap gap-2"><a href={'/pedigrees/' + record.id} className="action-secondary">内容を編集</a><button className="action-secondary" disabled={!fontsReady} onClick={() => window.print()}>印刷</button><button className="action-primary" disabled={generating || !fontsReady} onClick={() => void downloadPdf()}>{pdfButtonLabel}</button></div></div>
       <p className="text-sm text-gray-700">用紙は339×239mm、倍率は100%、余白なし、ヘッダー・フッターなしに設定してください。</p>
       <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
         <label>横位置 <input aria-label="印刷の横位置" type="number" min="-10" max="10" step="0.5" value={offset.x} onChange={event => adjust('x', event.target.value)} className="w-20 rounded border p-1" /> mm</label>

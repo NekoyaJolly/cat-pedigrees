@@ -2,6 +2,17 @@
 export const millimetersToPoints = 2.83465;
 export const certificateSize = { width: 339, height: 239 };
 
+// 画面とPDFの両方で、指定した和欧文の書体が揃ってから印刷する。
+export async function loadCertificateFonts(): Promise<void> {
+  const fonts = await Promise.all([
+    document.fonts.load('400 10.5pt "Libre Baskerville"', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
+    document.fonts.load('600 12pt "Libre Baskerville"', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'),
+    document.fonts.load('400 10.5pt "Noto Serif JP"', '血統書の氏名'),
+  ]);
+  if (fonts.some(loaded => loaded.length === 0)) throw new Error('印刷書体を読み込めませんでした。');
+  await document.fonts.ready;
+}
+
 function encode(text: string): Uint8Array { return new TextEncoder().encode(text); }
 
 export function buildImagePdf(jpeg: Uint8Array, pixelWidth: number, pixelHeight: number): Uint8Array {
@@ -31,7 +42,7 @@ export function buildImagePdf(jpeg: Uint8Array, pixelWidth: number, pixelHeight:
 
 // 実際に表示している改行・文字位置を読み取り、300dpiの印刷画像へ描く。
 export async function renderCertificatePdf(root: HTMLElement, includePaper: boolean): Promise<Uint8Array> {
-  await document.fonts.ready;
+  await loadCertificateFonts();
   const bounds = root.getBoundingClientRect();
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(certificateSize.width / 25.4 * 300);
