@@ -68,7 +68,55 @@ button:disabled { opacity: .5; cursor: default; }
 
 /* 固定の保存欄と重ならない位置まで、入力欄をスクロールできる余地を設ける。 */
 .pedigree-field, .pedigree-lookup { scroll-margin-block: 1rem 8rem; }
-.pedigree-lookups { grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr)); }
+.pedigree-lookups { display: flex; flex-wrap: wrap; gap: .5rem .75rem; }
+.pedigree-lookup-group { min-inline-size: 0; max-inline-size: 100%; }
+.pedigree-lookup {
+  inline-size: calc(7ch + 1rem + 4px);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 欄幅は入力内容に合わせる。文字拡大や狭い画面では折り返し、値は切り詰めない。 */
+.pedigree-field {
+  --field-width: 26ch;
+  inline-size: calc(var(--field-width) + 1rem + 2px);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  flex: 0 1 auto;
+  border: 1px solid #9ca3af;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 60%);
+  font-size: 1rem;
+}
+.pedigree-field--id { --field-width: 7ch; }
+.pedigree-field--code { --field-width: 3ch; }
+.pedigree-field--gender { --field-width: 1ch; }
+.pedigree-field--count { --field-width: 2ch; }
+.pedigree-field--code, .pedigree-field--gender, .pedigree-field--count { min-inline-size: calc(2em + 1rem + 2px); }
+.pedigree-field--date, .pedigree-field--eye { --field-width: 10ch; }
+.pedigree-field--continuation, .pedigree-field--ancestor-title, .pedigree-field--color, .pedigree-field--number { --field-width: 24ch; }
+.pedigree-field--person { --field-width: 20ch; }
+.pedigree-field--title { --field-width: 12ch; }
+.pedigree-field--notes { --field-width: 28ch; }
+.pedigree-field input { border-radius: 0 0 4px 4px; font-variant-numeric: tabular-nums; }
+.pedigree-field-row, .pedigree-ancestor-fields { display: flex; flex-wrap: wrap; gap: .5rem; min-inline-size: 0; }
+.pedigree-basic-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; padding-block: .5rem; }
+.pedigree-details-column { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; min-inline-size: 0; }
+.pedigree-master { display: flex; align-items: center; gap: .5rem; min-inline-size: 0; max-inline-size: 100%; }
+.pedigree-master > .pedigree-field { flex-shrink: 0; }
+.pedigree-master-name { min-inline-size: 0; max-inline-size: 26ch; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.4; color: #374151; }
+.pedigree-master--gender .pedigree-master-name { max-inline-size: 7ch; }
+.pedigree-ancestor-fields { padding: .5rem; }
+.pedigree-ancestor-fields .pedigree-field { background: rgb(255 255 255 / 75%); }
+.pedigree-ancestor-fields .pedigree-field--name { flex-basis: calc(26ch + 1rem + 2px); }
+@media (width >= 48rem) {
+  .pedigree-basic-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (width >= 64rem) {
+  .pedigree-basic-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pedigree-field { font-size: .875rem; }
+}
 .pedigree-savebar { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
 @media (width < 64rem) {
   .pedigree-savebar { bottom: var(--keyboard-offset, 0px); }

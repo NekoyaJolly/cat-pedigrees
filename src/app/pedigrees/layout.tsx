@@ -19,7 +19,7 @@ export default async function PedigreesLayout({
           <form action={logout}><button className="min-h-11 text-gray-600 hover:underline">ログアウト</button></form>
         </nav>
       </header>
-      <main className="app-main flex min-w-0 flex-grow flex-col p-3 md:p-6">
+      <main className="app-main flex min-w-0 flex-grow flex-col p-2 sm:p-3 md:p-6">
         {children}
       </main>
     </div>

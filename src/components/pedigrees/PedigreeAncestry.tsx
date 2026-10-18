@@ -3,6 +3,7 @@
 import { useId, useState, type ChangeEvent } from 'react';
 import type { Pedigree } from '@prisma/client';
 import type { TextField } from '@/lib/pedigree-fields';
+import { pedigreeFieldSize } from '@/lib/pedigree-input-layout';
 import { FormInput } from './FormInput';
 
 interface AncestorGroup {
@@ -59,16 +60,16 @@ function AncestorFields({ group, collapsible, formData, duplicates, disabled, on
     </h3>
     {collapsible ? <h3 className="lg:hidden">
       <button type="button" className="block min-h-11 w-full px-3 py-3 text-left" aria-expanded={expanded} aria-controls={panelId} aria-label={group.title + 'の入力欄を' + (expanded ? '閉じる' : '開く')} onClick={() => setExpanded(previous => !previous)}>
-        <span className="flex items-center justify-between gap-3 text-sm font-semibold text-gray-700"><span>{group.title}</span><span aria-hidden="true">{expanded ? '閉じる −' : '開く ＋'}</span></span>
+        <span className="flex items-center justify-between gap-3 text-sm font-semibold text-gray-700"><span>{group.title}</span><span aria-hidden="true">{expanded ? '−' : '＋'}</span></span>
         <span className="mt-1 block break-words text-base font-medium">{name}</span>
-        <span className={'mt-1 block break-words text-sm ' + (repeated ? 'font-semibold text-blue-600' : 'text-gray-700')}>ナンバー：{number || '未入力'}{repeated ? '（重複）' : ''}</span>
+        <span className={'mt-1 block break-words text-sm ' + (repeated ? 'font-semibold text-blue-600' : 'text-gray-700')}>{number || '未入力'}{repeated ? '（重複）' : ''}</span>
       </button>
     </h3> : null}
     {/* 入力欄は一組だけ保持し、狭い幅で閉じても入力値を失わない。閲覧時も開閉できる。 */}
     <div id={panelId} className={!collapsible || expanded ? 'block' : 'hidden lg:block'}>
-      <fieldset disabled={disabled} className="min-w-0 border-l border-t border-gray-400">
+      <fieldset disabled={disabled} className="pedigree-ancestor-fields">
         <legend className="sr-only">{group.title}の血統情報</legend>
-        {group.fields.map(([field,label]) => <FormInput key={field} label={group.title + ' ' + label} value={formData[field] ?? ''} onChange={event => onChange(event,field)} isDuplicate={field === group.numberField && repeated} maxLength={500} />)}
+        {group.fields.map(([field,label]) => <FormInput key={field} label={label} aria-label={group.title + ' ' + label} fieldSize={pedigreeFieldSize(field)} value={formData[field] ?? ''} onChange={event => onChange(event,field)} isDuplicate={field === group.numberField && repeated} maxLength={500} />)}
       </fieldset>
     </div>
   </section>;
