@@ -75,7 +75,11 @@ button:disabled { opacity: .5; cursor: default; }
   min-inline-size: 0;
   max-inline-size: 100%;
   font-variant-numeric: tabular-nums;
+  block-size: calc(1.25em + 2px);
+  padding-block: 0;
+  line-height: 1.25;
 }
+.pedigree-lookups .action-secondary { min-block-size: calc(1.25rem + 2px); padding-block: 0; line-height: 1.25; }
 
 /* 欄幅は入力内容に合わせる。文字拡大や狭い画面では折り返し、値は切り詰めない。 */
 .pedigree-field {
@@ -93,13 +97,19 @@ button:disabled { opacity: .5; cursor: default; }
 .pedigree-field--code { --field-width: 3ch; }
 .pedigree-field--gender { --field-width: 1ch; }
 .pedigree-field--count { --field-width: 2ch; }
-.pedigree-field--code, .pedigree-field--gender, .pedigree-field--count { min-inline-size: calc(2em + 1rem + 2px); }
+.pedigree-field--count { min-inline-size: calc(2em + 1rem + 2px); }
+/* 候補の矢印がある欄も、項目名と3桁のコードが欠けない最小幅にする。 */
+.pedigree-field--code, .pedigree-field--gender { min-inline-size: calc(2em + 2rem + 4px); }
 .pedigree-field--date, .pedigree-field--eye { --field-width: 10ch; }
 .pedigree-field--continuation, .pedigree-field--ancestor-title, .pedigree-field--color, .pedigree-field--number { --field-width: 24ch; }
 .pedigree-field--person { --field-width: 20ch; }
 .pedigree-field--title { --field-width: 12ch; }
 .pedigree-field--notes { --field-width: 28ch; }
-.pedigree-field input { border-radius: 0 0 4px 4px; font-variant-numeric: tabular-nums; }
+/* 高さは文字の1.25倍と枠線だけにし、上下の入力余白を設けない。 */
+.pedigree-field input { block-size: 1.25em; padding-block: 0; line-height: 1.25; border-radius: 4px; font-variant-numeric: tabular-nums; }
+/* 空欄の項目名は枠内に置き、フォーカス中は消す。入力値には影響させない。 */
+.pedigree-field input::placeholder, .pedigree-lookup::placeholder { color: #6b7280; opacity: 1; }
+.pedigree-field input:focus::placeholder, .pedigree-lookup:focus::placeholder { opacity: 0; }
 .pedigree-field-row, .pedigree-ancestor-fields { display: flex; flex-wrap: wrap; gap: .5rem; min-inline-size: 0; }
 .pedigree-basic-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; padding-block: .5rem; }
 .pedigree-details-column { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; min-inline-size: 0; }

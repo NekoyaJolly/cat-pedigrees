@@ -113,9 +113,9 @@ export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeM
     </div>
     <div className="pedigree-lookups mb-3">
       {(['self','shared','father','mother'] as const).map(role => <div key={role} className="pedigree-lookup-group">
-        <label className="mb-1 block text-sm font-medium" htmlFor={'lookup-' + role}>{({ self: '本猫ID', shared: '両親ID', father: '父猫ID', mother: '母猫ID' })[role]}</label>
-        <div className="flex gap-1">
-          <input id={'lookup-' + role} className="pedigree-lookup min-h-11 rounded border border-gray-400 bg-white px-2 py-2 text-base" inputMode="numeric" autoComplete="off" aria-label={role === 'self' ? '本猫を呼び出すID' : undefined} value={lookup[role]} disabled={saving || loading !== null} onChange={event => setLookup({ ...lookup, [role]: event.target.value })} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void fetchCat(role); } }} />
+        <label className="sr-only" htmlFor={'lookup-' + role}>{({ self: '本猫ID', shared: '両親ID', father: '父猫ID', mother: '母猫ID' })[role]}</label>
+        <div className="flex items-center gap-1">
+          <input id={'lookup-' + role} className="pedigree-lookup rounded border border-gray-400 bg-white px-2 text-base" inputMode="numeric" autoComplete="off" placeholder={({ self: '本猫ID', shared: '両親ID', father: '父猫ID', mother: '母猫ID' })[role]} aria-label={role === 'self' ? '本猫を呼び出すID' : undefined} value={lookup[role]} disabled={saving || loading !== null} onChange={event => setLookup({ ...lookup, [role]: event.target.value })} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void fetchCat(role); } }} />
           <button type="button" className="action-secondary shrink-0 whitespace-nowrap px-2" aria-label={({ self: '本猫', shared: '両親', father: '父猫', mother: '母猫' })[role] + 'を呼び出す'} disabled={saving || loading !== null || !lookup[role]} onClick={() => void fetchCat(role)}>呼出</button>
         </div>
       </div>)}
@@ -130,7 +130,7 @@ export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeM
       <fieldset disabled={saving || loading !== null || !canWrite} className="min-w-0">
       <div className="pedigree-basic-grid">
         <div className="pedigree-details-column">
-          <div className="pedigree-field-row"><FormInput label="本猫ID" fieldSize="id" value={formData.pedigreeId || ''} placeholder="—" readOnly />{master('genderCode','性別',masters.genders)}</div>
+          <div className="pedigree-field-row"><FormInput label="本猫ID" fieldSize="id" value={formData.pedigreeId || ''} readOnly />{master('genderCode','性別',masters.genders)}</div>
           {input('catName','名前')}{input('catName2','名前の続き')}
           {master('breedCode','猫種',masters.breeds)}{master('coatColorCode','色柄',masters.colors)}
         </div>
