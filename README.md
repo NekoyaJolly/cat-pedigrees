@@ -44,6 +44,8 @@ DB接続先にはSupabaseの直接接続またはセッションプーラーを�
 
 CA証明書が必要な場合は、`DATABASE_SSL_CA`にSupabase公式のCA証明書をPEM文字列で登録します。Vercelのビルドコマンドは`npm run build && node --import tsx scripts/verify-deployment-db.mjs`です。後半は読み取り専用の接続確認で、専用ロールと必要な4テーブルを確認できない場合にビルドを失敗させます。
 
+Vercelの確認用URL、現在の閲覧モード、残っているメールログインの設定は[配置と接続確認](docs/vercel-deployment.md)を参照してください。
+
 ## 保存時の扱い
 
 Accessから対応づけた業務80項目のうち、本猫ID以外の79項目を保存します。GP系のフラッグは移行しません。画面に表示しない旧コードや曾祖父母の色柄も、編集時に保持します。既存の不定な日付は、その項目を変更しない限り保持します。
