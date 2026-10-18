@@ -51,11 +51,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 38px;
+  min-height: 2.75rem;
   border: 1px solid;
   border-radius: 5px;
   padding: 7px 12px;
-  font-size: 14px;
+  font-size: .875rem;
   line-height: 1.5;
   cursor: pointer;
 }
@@ -65,6 +65,89 @@
 .action-secondary:hover { background: #f1f5f9; }
 button:disabled { opacity: .5; cursor: default; }
 :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
+/* 固定の保存欄と重ならない位置まで、入力欄をスクロールできる余地を設ける。 */
+.pedigree-field, .pedigree-lookup { scroll-margin-block: 1rem 8rem; }
+.pedigree-lookups { display: flex; flex-wrap: wrap; gap: .5rem; }
+.pedigree-lookup-group { min-inline-size: 0; max-inline-size: 100%; }
+.pedigree-lookup {
+  inline-size: calc(7ch + 1rem + 4px);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  font-variant-numeric: tabular-nums;
+  block-size: calc(1.25em + 2px);
+  padding-block: 0;
+  line-height: 1.25;
+}
+
+/* 欄幅は入力内容に合わせる。文字拡大や狭い画面では折り返し、値は切り詰めない。 */
+.pedigree-field {
+  --field-width: 26ch;
+  inline-size: calc(var(--field-width) + 1rem + 2px);
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  flex: 0 1 auto;
+  border: 1px solid #9ca3af;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 60%);
+  font-size: 1rem;
+}
+.pedigree-field--id { --field-width: 7ch; }
+.pedigree-field--code { --field-width: 3ch; }
+.pedigree-field--gender { --field-width: 1ch; }
+.pedigree-field--count { --field-width: 2ch; }
+.pedigree-field--count { min-inline-size: calc(2em + 1rem + 2px); }
+/* 候補の矢印がある欄も、項目名と3桁のコードが欠けない最小幅にする。 */
+.pedigree-field--code, .pedigree-field--gender { min-inline-size: calc(2em + 2rem + 4px); }
+.pedigree-field--date, .pedigree-field--eye { --field-width: 10ch; }
+.pedigree-field--continuation, .pedigree-field--ancestor-title, .pedigree-field--color, .pedigree-field--number { --field-width: 24ch; }
+.pedigree-field--person { --field-width: 20ch; }
+.pedigree-field--title { --field-width: 12ch; }
+.pedigree-field--notes { --field-width: 28ch; }
+/* 高さは文字の1.25倍と枠線だけにし、上下の入力余白を設けない。 */
+.pedigree-field input { block-size: 1.25em; padding-block: 0; line-height: 1.25; border-radius: 4px; font-variant-numeric: tabular-nums; }
+/* 空欄の項目名は枠内に置き、フォーカス中は消す。入力値には影響させない。 */
+.pedigree-field input::placeholder, .pedigree-lookup::placeholder { color: #6b7280; opacity: 1; }
+.pedigree-field input:focus::placeholder, .pedigree-lookup:focus::placeholder { opacity: 0; }
+.pedigree-field-row, .pedigree-ancestor-fields { display: flex; flex-wrap: wrap; gap: .5rem; min-inline-size: 0; }
+.pedigree-cat-identity { column-gap: .75rem; max-inline-size: 100%; }
+.pedigree-basic-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; padding-block: .5rem; }
+.pedigree-details-column { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; min-inline-size: 0; }
+.pedigree-master { display: flex; align-items: center; gap: .5rem; min-inline-size: 0; max-inline-size: 100%; }
+.pedigree-master > .pedigree-field { flex-shrink: 0; }
+.pedigree-master-name { min-inline-size: 0; max-inline-size: 26ch; overflow-wrap: anywhere; font-size: .875rem; line-height: 1.4; color: #374151; }
+.pedigree-master--gender .pedigree-master-name { max-inline-size: 7ch; }
+.pedigree-ancestor-fields { padding: .5rem; }
+.pedigree-ancestor-fields .pedigree-field { background: rgb(255 255 255 / 75%); }
+.pedigree-ancestor-fields .pedigree-field--name { flex-basis: calc(26ch + 1rem + 2px); }
+@media (width >= 48rem) {
+  .pedigree-basic-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (width >= 64rem) {
+  .pedigree-basic-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pedigree-field { font-size: .875rem; }
+}
+.pedigree-savebar { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
+@media (width < 64rem) {
+  .pedigree-savebar { bottom: var(--keyboard-offset, 0px); }
+  /* 自由配置の見本を通常の折り返し配置へ戻し、後続の欄も自然に繰り上げる。 */
+  .pedigree-form-heading { min-block-size: 2rem; }
+  .pedigree-form-title { font-size: .75rem; line-height: 1.75rem; }
+  .pedigree-new-cat { min-block-size: 1.875rem; min-inline-size: 5.125rem; padding: 0 5px; font-size: 1rem; line-height: 1.25; }
+  .pedigree-lookups { gap: .375rem; margin-inline: -.25rem; }
+  .pedigree-lookup { block-size: calc(1.125em + 2px); line-height: 1.125; }
+  .pedigree-section-nav { gap: .375rem; padding-inline: .5rem; }
+  .pedigree-section-nav .action-secondary { min-block-size: 1.25rem; border: 0; border-radius: 0; padding: 0; background: transparent; line-height: 1.25rem; }
+  .pedigree-field--title { --field-width: 11ch; }
+  .pedigree-field--notes { --field-width: 24ch; }
+  /* 230〜232pxの指定差を24桁分へ揃え、全世代の名前を同じ幅にする。 */
+  .pedigree-ancestor-fields .pedigree-field--name { --field-width: 24ch; flex-basis: calc(24ch + 1rem + 2px); }
+  .pedigree-ancestor-heading { border-block-end: 0; padding-block: .5rem 0; }
+  .pedigree-ancestor-fields { gap: .25rem; padding-block: .25rem .5rem; }
+  .pedigree-ancestor-card--collapsible { margin-block-end: .25rem; }
+  .pedigree-ancestor-toggle { min-block-size: 1.25rem; min-inline-size: 2.75rem; max-inline-size: 100%; padding: 0 .625rem; font-size: 1rem; line-height: 1.25rem; }
+  .pedigree-ancestor-card--collapsible .pedigree-ancestor-fields { padding-block: 0 3px; padding-inline: .75rem; }
+}
 
 :root {
     --background: oklch(1 0 0);
