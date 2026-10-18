@@ -1,4 +1,5 @@
 import pg from 'pg';
+import { databaseConnectionSettings } from '../src/lib/database-connection.ts';
 
 // デプロイ先から実際に接続し、読み取りだけでアプリ専用ロールと必要なテーブルを確認する。
 const connectionString = process.env.DATABASE_URL;
@@ -8,7 +9,7 @@ let password = '';
 try {
   try { password = decodeURIComponent(new URL(connectionString).password); }
   catch { throw new Error('データベースの接続設定の形式を確認してください。'); }
-  client = new pg.Client({ connectionString, connectionTimeoutMillis: 10000, statement_timeout: 15000 });
+  client = new pg.Client({ ...databaseConnectionSettings(connectionString, process.env.DATABASE_SSL_CA), connectionTimeoutMillis: 10000, statement_timeout: 15000 });
   await client.connect();
   await client.query('begin transaction read only');
   const result = await client.query(`select current_user as role,

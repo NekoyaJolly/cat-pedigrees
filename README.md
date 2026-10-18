@@ -21,7 +21,7 @@ Accessの登録・検索・親の呼び出しを引き継ぐWeb版です。PCで
 
 ## 起動と接続
 
-Node.js 22以上を使います。追加のアプリ用依存パッケージは導入していません。Prisma CLIだけは既存クライアントと同じ7.8.0を生成時に実行します。
+Node.js 22以上を使います。VercelではNode.js 24を使います。Prisma CLIはクライアントと同じ7.10.1を生成時に実行します。UI生成用のshadcn CLIは開発用依存に配置しています。
 
 以下は `cat-pedigrees` リポジトリ直下で実行します。
 
@@ -41,6 +41,8 @@ npm start
 Supabase Authのメールログインを有効にし、Site URLを`APP_ORIGIN`、許可する戻り先を`APP_ORIGIN/auth/callback`に設定します。既定のメールリンクと、メールテンプレートに確認コードを載せた場合のコード入力に対応しています。`PEDIGREE_ALLOWED_EMAILS`にある人だけがログインできます。認証後のセッションは12時間です。利用者一覧から外すと次のリクエストから拒否します。プロジェクトで独自SMTPの送信設定と到達確認を済ませてください。
 
 DB接続先にはSupabaseの直接接続またはセッションプーラーを使います。新規採番でトランザクション内のロックを使うため、トランザクションを分断する接続方式は使いません。接続数は`DATABASE_POOL_MAX`で調整できます。本番のTLSは接続先に合ったCA証明書で検証し、証明書検証を無効にしないでください。
+
+CA証明書が必要な場合は、`DATABASE_SSL_CA`にSupabase公式のCA証明書をPEM文字列で登録します。Vercelのビルドコマンドは`npm run build && node --import tsx scripts/verify-deployment-db.mjs`です。後半は読み取り専用の接続確認で、専用ロールと必要な4テーブルを確認できない場合にビルドを失敗させます。
 
 ## 保存時の扱い
 
