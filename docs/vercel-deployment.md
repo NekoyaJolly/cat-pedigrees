@@ -14,7 +14,7 @@
 | ビルド時間 | 登録・編集を有効化した配置の接続確認を含むビルド完了ログで36秒 |
 | 接続DB | 既存のSupabase `pedigrees`（`hnhhfcityestinsvcdfw`） |
 | 登録・変更 | 確認用ブランチ`feat/mobile-pedigree-ui`のPreviewで`PEDIGREE_WRITES_ENABLED=1`。登録・編集が可能 |
-| メールログイン | 本人のマジックリンクによるログイン成功を確認済み。その後、メールの送信制限を報告。専用の送信設定が必要 |
+| メールログイン | 本人のマジックリンクによるログイン成功を確認済み。送信制限への対応としてResendの専用SMTPを設定し、上限を1時間30通へ変更。新しい送信経路の受信・ログイン確認待ち |
 
 MyCats ProのVercelプロジェクトや別のDBへ置き換えていない。GitHubの`main`にもマージしていない。確認用のブランチから単体版を配置した。
 
@@ -58,7 +58,7 @@ Supabaseの[ログインURL設定](https://supabase.com/dashboard/project/hnhhfc
 
 ログインの実機確認は完了。次は実機での一覧・詳細の見やすさ、登録・編集、父母の呼び出し、台紙への試し刷りを確認する。エージェントから本番の血統データへ試験用の行を追加・変更する操作は行っていない。`main`へのマージと本番公開は未実施。
 
-## メール送信制限の確認と残作業
+## メール送信設定と受信確認
 
 2026年10月18日、利用者から「時間をおいてお試しください」と表示され、メールを送れないとの報告があった。Supabaseの画面で、Pedigreeは標準のメール送信を使用し、専用SMTPは無効であることを確認した。標準送信はプロジェクト全体で1時間2通に制限されている。認証ログでも直近24時間の`/otp`に成功2件（HTTP 200）と送信上限による拒否6件（HTTP 429、`over_email_send_rate_limit`）があり、今回の原因を確認できた。メール本文、宛先、認証トークンは調査結果へ保存していない。
 
@@ -66,13 +66,28 @@ Supabaseの[ログインURL設定](https://supabase.com/dashboard/project/hnhhfc
 - 送信処理はボタン操作時に1回実行され、自動再送や繰り返し送信の処理はない。
 - アプリのログイン状態は、同じ公開先・同じブラウザーで12時間保持する実装。別端末や別ブラウザーでは別途ログインが必要。今回、利用者が再送を必要とした理由は未特定。
 - HUBの本番DBでは専用SMTPが有効で、Resendのホスト`smtp.resend.com`と465番ポートを使用していた。設定の有無と公開された接続先だけを読み取り、HUB側は変更していない。保存済みの認証情報は読み出していない。
-- 対応はPedigree側へのResend接続の追加。既存アカウントで利用可能な送信元と接続権限の確認が必要。Resend側の画面をブラウザーの保護機能で確認できず、接続の切替は未実施。
+- Pedigree側へResendの専用SMTPを追加した。既存の認証済みドメイン`auth.nekoya.ltd`を使用し、このドメインでの送信だけを許可する血統書専用キーを作成した。既存ドメインの設定やHUB側のキーは変更していない。
 
-今回の調査ではログインメールの再送を行っていない。専用SMTPの設定後、メール送信上限と本人の受信・ログインを改めて確認する。
+2026年10月18日18:57（日本時間）、保存後の設定を管理APIで再取得し、次の内容を確認した。
 
-## CLIによる設定の準備
+| 設定 | 保存済みの値 |
+| --- | --- |
+| 対象プロジェクト | `pedigrees`（`hnhhfcityestinsvcdfw`） |
+| SMTPホスト・ポート | `smtp.resend.com`・465（SSL/TLS） |
+| SMTPユーザー | `resend` |
+| 送信者名 | 血統書管理 |
+| 送信元メールアドレス | `no-reply@auth.nekoya.ltd` |
+| メール送信上限 | プロジェクト全体で1時間30通 |
+| 専用キー名 | `cat-pedigrees-supabase-smtp-20261018` |
+| 専用キーの権限 | `sending_access`。送信ドメインを`auth.nekoya.ltd`に限定 |
 
-公式のResend CLI 2.26.0とSupabase CLI 2.121.0を作業環境へ導入し、配布元のSHA-256と起動を確認した。アプリへの依存追加はない。Supabase CLIは本人の確認コードで認証し、所有者だけが読み取れる専用の保存先から別の処理でも利用できることを確認した。管理APIでもPedigreeの専用SMTPは未設定、メール送信上限は1時間2通であることを確認した。Resend CLIの認証は未完了で、SMTPの切替は未実施。ブラウザーのログインはCLIへ引き継がれない。
+Site URL、Redirect URLs、メール確認の設定、サインアップの設定は維持している。キーと管理トークンの値はGitへ保存していない。
+
+ResendのAPIが専用キーを認識し、ドメイン一覧の管理操作を`restricted_api_key`で拒否することを確認した。作業環境からのSMTP直接接続はホスト名を解決できず、SMTP認証の完了は未確認。実際のメール送信・受信・新しい経路でのログインも未確認で、本人による確認が残る。エージェントからログインメールの再送は行っていない。
+
+## CLIによる設定
+
+公式のResend CLI 2.26.0とSupabase CLI 2.121.0を作業環境へ導入し、配布元のSHA-256と起動を確認した。アプリへの依存追加はない。本人による認証後、Resend CLIで送信ドメインを確認して専用キーを作成し、Supabase Management APIへ設定した。
 
 `scripts/configure-resend-smtp.mjs`は対象プロジェクトを`hnhhfcityestinsvcdfw`へ固定し、Supabase Management APIへSMTPの6項目とメール送信上限だけを保存する。上限は1時間30通とし、既にそれ以上なら維持する。保存後は設定を読み直し、接続先・送信元・上限と、既存のログインURL・確認設定を検証する。APIキーの有効性と配信成功は設定の読み直しだけでは確認できないため、受信確認を別途行う。
 
@@ -83,6 +98,8 @@ Supabaseの[ログインURL設定](https://supabase.com/dashboard/project/hnhhfc
 | `SUPABASE_ACCESS_TOKEN` | 対象プロジェクトの認証設定を読み取り・更新できる管理用トークン。アプリ用の公開キーやDBパスワードでは代用できない |
 | `RESEND_SMTP_PASSWORD` | Resendの認証済み送信ドメインに限定した送信専用APIキー |
 | `SMTP_FROM_EMAIL` | 上記の認証済みドメインの送信元メールアドレス |
+
+実行場所は`cat-pedigrees`リポジトリのルート（`package.json`があるフォルダー）。
 
 ```bash
 # 入力の有無と形式を確認する。API通信も設定変更も行わない。
@@ -95,6 +112,6 @@ node scripts/configure-resend-smtp.mjs --apply
 node --test tests/smtp-setup.test.mjs
 ```
 
-この作業環境で認証済みの管理トークンを非表示で渡した`--check`は、`RESEND_SMTP_PASSWORD`と`SMTP_FROM_EMAIL`の2項目が未設定であることを確認して停止した。`--apply`は実行しておらず、ResendのAPIキー作成、送信元ドメインの変更、SupabaseのSMTP変更、実メール送信はいずれも未実施。ブラウザー経由の設定は観察保護で確認できないため、Resend CLI/APIの認証と送信元の確認が次の作業条件となる。
+認証情報と送信元を非表示で渡して`--apply`を実行し、終了コード0を確認した。設定の保存・読み直しに加えて、別の管理API要求でも上記の値を確認した。設定スクリプトのテスト5件では、変更対象の限定、秘密値の非表示、異常時の停止、既存のログイン設定の維持を確認している。
 
 APIの仕様：[SMTP設定](https://supabase.com/docs/guides/auth/auth-smtp)、[認証設定の部分更新](https://supabase.com/docs/reference/api/v1-update-auth-service-config)、[ResendのSupabase接続](https://resend.com/docs/send-with-supabase-smtp)。
