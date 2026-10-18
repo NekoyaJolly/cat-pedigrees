@@ -2,12 +2,11 @@
 export const millimetersToPoints = 2.83465;
 export const certificateSize = { width: 339, height: 239 };
 
-// 画面とPDFの両方で、指定した和欧文の書体が揃ってから印刷する。
+// 画面とPDFの両方で、指定した欧文書体が揃ってから印刷する。
 export async function loadCertificateFonts(): Promise<void> {
   const fonts = await Promise.all([
     document.fonts.load('400 10.5pt "Libre Baskerville"', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'),
     document.fonts.load('600 12pt "Libre Baskerville"', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'),
-    document.fonts.load('400 10.5pt "Noto Serif JP"', '血統書の氏名'),
   ]);
   if (fonts.some(loaded => loaded.length === 0)) throw new Error('印刷書体を読み込めませんでした。');
   await document.fonts.ready;
