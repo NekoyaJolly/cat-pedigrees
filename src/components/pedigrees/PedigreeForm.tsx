@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { usePedigreeStore } from '@/store/usePedigreeStore';
+import { useStore } from 'zustand';
+import type { PedigreeStore } from '@/store/usePedigreeStore';
 import { FormInput } from './FormInput';
 import PedigreeAncestry from './PedigreeAncestry';
 import { useFormViewport } from './useFormViewport';
@@ -17,19 +18,19 @@ type SaveMode = 'save' | 'print' | 'sibling';
 type LookupRole = 'self' | 'shared' | 'father' | 'mother';
 const lookupLabels: Record<LookupRole, string> = { self: '本猫ID', shared: '両親ID', father: '父猫ID', mother: '母猫ID' };
 
-export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeMasters; canWrite: boolean }) {
-  const { formData, updateField, setFormData, mergeAncestryData } = usePedigreeStore();
+export default function PedigreeForm({ store, masters, canWrite }: { store: PedigreeStore; masters: PedigreeMasters; canWrite: boolean }) {
+  // キャッシュから戻る場合も、この画面で開いた猫と未保存の内容を保持する。
+  const { formData, dirty, updateField, setFormData, mergeAncestryData } = useStore(store);
   const duplicates = useMemo(() => getDuplicateIdentifiers(formData), [formData]);
   const [lookup, setLookup] = useState<Record<LookupRole, string>>({ self: '', shared: '', father: '', mother: '' });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [dirty, setDirtyState] = useState(false);
   const [mode, setMode] = useState<SaveMode>('save');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [savedId, setSavedId] = useState<string | null>(null);
   const requestId = useRef<string | null>(null);
-  const dirtyRef = useRef(false);
+  const dirtyRef = useRef(dirty);
   const savingRef = useRef(false);
   const mountedRef = useRef(true);
   const lookupVersions = useRef<Record<LookupRole, number>>({ self: 0, shared: 0, father: 0, mother: 0 });
@@ -49,7 +50,7 @@ export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeM
   // 非同期の呼び出しでも、未保存状態を常に最新の値で確認する。
   function setDirty(value: boolean) {
     dirtyRef.current = value;
-    setDirtyState(value);
+    store.getState().setDirty(value);
   }
 
   useEffect(() => {
@@ -107,7 +108,7 @@ export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeM
         if (!isCurrent()) return true;
         if (!record) return fail('そのIDの猫が見つかりませんでした。');
         if (role === 'self') { setFormData(record); setDirty(false); setSavedId(null); requestId.current = null; lookupFailures.current = {}; window.history.replaceState(null,'','/pedigrees/' + record.id); }
-        else if (role === 'shared') { setFormData({ ...usePedigreeStore.getState().formData, ...ancestryOf(record) }); setDirty(true); }
+        else if (role === 'shared') { setFormData({ ...store.getState().formData, ...ancestryOf(record) }); setDirty(true); }
         else { mergeAncestryData(record, role); setDirty(true); }
         setError(Object.values(lookupFailures.current)[0] || '');
         setMessage('呼び出しました。');
@@ -137,7 +138,7 @@ export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeM
       // ID欄から保存へ移った場合も、呼び出した最新の内容が揃ってから保存する。
       const outcomes = await Promise.all([...pendingLookups.current.values()]);
       if (outcomes.some(ok => !ok)) { printWindow?.close(); return; }
-      const current = usePedigreeStore.getState().formData;
+      const current = store.getState().formData;
       requestId.current ??= crypto.randomUUID();
       const result = await savePedigree({ recordId: current.id, expectedUpdatedAt: current.updatedAt ? new Date(current.updatedAt).toISOString() : undefined, requestId: requestId.current, draft: current });
       if (!result.ok) { printWindow?.close(); setError(result.message); return; }
