@@ -68,7 +68,7 @@ button:disabled { opacity: .5; cursor: default; }
 
 /* 固定の保存欄と重ならない位置まで、入力欄をスクロールできる余地を設ける。 */
 .pedigree-field, .pedigree-lookup { scroll-margin-block: 1rem 8rem; }
-.pedigree-lookups { display: flex; flex-wrap: wrap; gap: .5rem .75rem; }
+.pedigree-lookups { display: flex; flex-wrap: wrap; gap: .5rem; }
 .pedigree-lookup-group { min-inline-size: 0; max-inline-size: 100%; }
 .pedigree-lookup {
   inline-size: calc(7ch + 1rem + 4px);
@@ -79,7 +79,6 @@ button:disabled { opacity: .5; cursor: default; }
   padding-block: 0;
   line-height: 1.25;
 }
-.pedigree-lookups .action-secondary { min-block-size: calc(1.25rem + 2px); padding-block: 0; line-height: 1.25; }
 
 /* 欄幅は入力内容に合わせる。文字拡大や狭い画面では折り返し、値は切り詰めない。 */
 .pedigree-field {
