@@ -15,22 +15,20 @@ export const FormInput: React.FC<FormInputProps> = ({
   const generatedId = useId();
   const inputId = props.id || generatedId;
   return (
-    <div className={`relative border-b border-r border-gray-400 ${className}`}>
-      <input
-        {...props}
-        id={inputId}
-        className={`block h-11 px-2 pb-1 pt-4 w-full text-[13px] outline-none bg-white/40 focus:bg-white transition-colors ${
-          isDuplicate ? 'text-blue-600 font-bold' : 'text-gray-900'
-        } ${props.disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
-      />
-      <label 
+    <div className={`pedigree-field min-w-0 border-b border-r border-gray-400 ${className}`}>
+      <label
         htmlFor={inputId}
-        className={`absolute text-[10px] leading-3 text-gray-600 top-1 left-2
-        pointer-events-none truncate max-w-[calc(100%-16px)]
-        ${props.disabled ? 'opacity-60' : ''}`}
+        className={`block px-2 pt-1.5 text-sm leading-5 text-gray-700 lg:pt-1 lg:text-xs lg:leading-4 ${props.disabled ? 'opacity-60' : ''}`}
       >
         {label}
       </label>
+      <input
+        {...props}
+        id={inputId}
+        className={`block min-h-11 w-full min-w-0 bg-white/40 px-2 pb-1 text-base leading-6 transition-colors focus:bg-white lg:min-h-7 lg:text-sm ${
+          isDuplicate ? 'text-blue-600 font-bold' : 'text-gray-900'
+        } ${props.disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+      />
     </div>
   );
 };

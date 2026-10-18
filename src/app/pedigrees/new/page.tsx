@@ -9,7 +9,7 @@ export default async function NewPedigreePage({ searchParams }: { searchParams: 
   if (sibling && !source) notFound();
   const initialData = source ? siblingDraft(source) : { registrationDate: todayInJapan() };
   return (
-    <div className="flex-1 bg-white p-4 rounded-lg shadow border border-gray-200">
+    <div className="min-w-0 flex-1">
       <PedigreeFormContainer key={sibling || 'new'} initialData={initialData} masters={{ breeds, colors, genders }} canWrite={process.env.PEDIGREE_WRITES_ENABLED === '1'} />
     </div>
   );
