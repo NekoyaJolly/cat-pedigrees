@@ -45,24 +45,31 @@ interface AncestryProps {
   onChange: (event: ChangeEvent<HTMLInputElement>, field: TextField) => void;
 }
 
+// 配置見本の略称を同世代へ揃える。読み上げ名とデータ項目は日本語の対応を保つ。
+const compactTitles: Record<string, string> = {
+  '父': 'Father', '母': 'Mother',
+  '父の父': 'FF', '父の母': 'FM', '母の父': 'MF', '母の母': 'MM',
+  '父・父の父': 'FFF', '父・父の母': 'FFM', '父・母の父': 'FMF', '父・母の母': 'FMM',
+  '母・父の父': 'MFF', '母・父の母': 'MFM', '母・母の父': 'MMF', '母・母の母': 'MMM',
+};
+
 function AncestorFields({ group, collapsible, formData, duplicates, disabled, onChange }: AncestryProps & { group: AncestorGroup; collapsible: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const panelId = useId();
-  const name = formData[group.nameField]?.trim() || '名前未入力';
+  const compactTitle = compactTitles[group.title] || group.title;
   const number = formData[group.numberField]?.trim() || '';
   const repeated = number !== '' && duplicates.has(number);
   const sideColor = group.side === 'father' ? 'bg-blue-50' : 'bg-rose-50';
 
-  return <section className={'min-w-0 border-b border-gray-300 lg:flex lg:flex-1 lg:flex-col lg:border-r ' + sideColor} aria-label={group.title}>
-    <h3 className={(collapsible ? 'hidden lg:flex' : 'flex') + ' flex-wrap items-center justify-between gap-2 border-b border-gray-300 px-2 py-2 text-sm font-semibold lg:py-1 lg:text-xs'}>
-      {group.title}
+  return <section className={'pedigree-ancestor-card ' + (collapsible ? 'pedigree-ancestor-card--collapsible ' : '') + 'min-w-0 border-b border-gray-300 lg:flex lg:flex-1 lg:flex-col lg:border-r ' + sideColor} aria-label={group.title}>
+    <h3 className={'pedigree-ancestor-heading ' + (collapsible ? 'hidden lg:flex' : 'flex') + ' flex-wrap items-center justify-between gap-2 border-b border-gray-300 px-2 py-2 text-sm font-semibold lg:py-1 lg:text-xs'}>
+      <span className="lg:hidden">{compactTitle}</span><span className="hidden lg:inline">{group.title}</span>
       {repeated ? <span className="text-blue-700">ナンバー重複</span> : null}
     </h3>
     {collapsible ? <h3 className="lg:hidden">
-      <button type="button" className="block min-h-11 w-full px-3 py-3 text-left" aria-expanded={expanded} aria-controls={panelId} aria-label={group.title + 'の入力欄を' + (expanded ? '閉じる' : '開く')} onClick={() => setExpanded(previous => !previous)}>
-        <span className="flex items-center justify-between gap-3 text-sm font-semibold text-gray-700"><span>{group.title}</span><span aria-hidden="true">{expanded ? '−' : '＋'}</span></span>
-        <span className="mt-1 block break-words text-base font-medium">{name}</span>
-        <span className={'mt-1 block break-words text-sm ' + (repeated ? 'font-semibold text-blue-600' : 'text-gray-700')}>{number || '未入力'}{repeated ? '（重複）' : ''}</span>
+      <button type="button" className="pedigree-ancestor-toggle flex items-center gap-2 text-left" aria-expanded={expanded} aria-controls={panelId} aria-label={group.title + 'の入力欄を' + (expanded ? '閉じる' : '開く')} onClick={() => setExpanded(previous => !previous)}>
+        <span>{compactTitle}</span>
+        {repeated ? <span className="text-sm font-semibold text-blue-700">ナンバー重複</span> : null}
       </button>
     </h3> : null}
     {/* 入力欄は一組だけ保持し、狭い幅で閉じても入力値を失わない。閲覧時も開閉できる。 */}
@@ -78,7 +85,7 @@ function AncestorFields({ group, collapsible, formData, duplicates, disabled, on
 export default function PedigreeAncestry(props: AncestryProps) {
   return <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-0">
     {generations.map((groups,index) => <section key={index} id={['parents','grandparents','great-grandparents'][index]} className="flex min-w-0 scroll-mt-4 flex-col" aria-label={['父母','祖父母','曾祖父母'][index]}>
-      <h2 className="border-b border-gray-300 bg-gray-200 px-3 py-2 text-base font-bold lg:px-2 lg:text-sm">{['父母','祖父母','曾祖父母'][index]}</h2>
+      <h2 className="border-b border-gray-300 bg-gray-200 px-3 py-2 text-base font-bold lg:px-2 lg:text-sm"><span className="lg:hidden">{['Father,Mother','祖父母','曾祖父母'][index]}</span><span className="hidden lg:inline">{['父母','祖父母','曾祖父母'][index]}</span></h2>
       <div className="flex flex-1 flex-col">
         {groups.map(group => <AncestorFields key={group.title} group={group} collapsible={index > 0} {...props} />)}
       </div>

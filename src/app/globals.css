@@ -110,6 +110,7 @@ button:disabled { opacity: .5; cursor: default; }
 .pedigree-field input::placeholder, .pedigree-lookup::placeholder { color: #6b7280; opacity: 1; }
 .pedigree-field input:focus::placeholder, .pedigree-lookup:focus::placeholder { opacity: 0; }
 .pedigree-field-row, .pedigree-ancestor-fields { display: flex; flex-wrap: wrap; gap: .5rem; min-inline-size: 0; }
+.pedigree-cat-identity { column-gap: .75rem; max-inline-size: 100%; }
 .pedigree-basic-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; padding-block: .5rem; }
 .pedigree-details-column { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; min-inline-size: 0; }
 .pedigree-master { display: flex; align-items: center; gap: .5rem; min-inline-size: 0; max-inline-size: 100%; }
@@ -129,6 +130,23 @@ button:disabled { opacity: .5; cursor: default; }
 .pedigree-savebar { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
 @media (width < 64rem) {
   .pedigree-savebar { bottom: var(--keyboard-offset, 0px); }
+  /* 自由配置の見本を通常の折り返し配置へ戻し、後続の欄も自然に繰り上げる。 */
+  .pedigree-form-heading { min-block-size: 2rem; }
+  .pedigree-form-title { font-size: .75rem; line-height: 1.75rem; }
+  .pedigree-new-cat { min-block-size: 1.875rem; min-inline-size: 5.125rem; padding: 0 5px; font-size: 1rem; line-height: 1.25; }
+  .pedigree-lookups { gap: .375rem; margin-inline: -.25rem; }
+  .pedigree-lookup { block-size: calc(1.125em + 2px); line-height: 1.125; }
+  .pedigree-section-nav { gap: .375rem; padding-inline: .5rem; }
+  .pedigree-section-nav .action-secondary { min-block-size: 1.25rem; border: 0; border-radius: 0; padding: 0; background: transparent; line-height: 1.25rem; }
+  .pedigree-field--title { --field-width: 11ch; }
+  .pedigree-field--notes { --field-width: 24ch; }
+  /* 230〜232pxの指定差を24桁分へ揃え、全世代の名前を同じ幅にする。 */
+  .pedigree-ancestor-fields .pedigree-field--name { --field-width: 24ch; flex-basis: calc(24ch + 1rem + 2px); }
+  .pedigree-ancestor-heading { border-block-end: 0; padding-block: .5rem 0; }
+  .pedigree-ancestor-fields { gap: .25rem; padding-block: .25rem .5rem; }
+  .pedigree-ancestor-card--collapsible { margin-block-end: .25rem; }
+  .pedigree-ancestor-toggle { min-block-size: 1.25rem; min-inline-size: 2.75rem; max-inline-size: 100%; padding: 0 .625rem; font-size: 1rem; line-height: 1.25rem; }
+  .pedigree-ancestor-card--collapsible .pedigree-ancestor-fields { padding-block: 0 3px; padding-inline: .75rem; }
 }
 
 :root {

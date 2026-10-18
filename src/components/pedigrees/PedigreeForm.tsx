@@ -168,13 +168,13 @@ export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeM
   </div>;
 
   return <div ref={formRef} className="mx-auto w-full min-w-0 max-w-6xl rounded-lg border border-gray-300 bg-white p-2 text-base sm:p-4 lg:text-sm">
-    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+    <div className="pedigree-form-heading mb-3 flex flex-wrap items-center justify-between gap-2">
       <div className="min-w-0">
-        <h1 className="text-xl font-bold">{formData.id ? '血統情報の編集' : '血統情報の新規登録'}</h1>
+        <h1 className="pedigree-form-title text-xl font-bold">{formData.id ? '血統情報の編集' : '血統情報の新規登録'}</h1>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {formData.id ? <a className="action-secondary" href={'/pedigrees/new?sibling=' + formData.id}>きょうだいを登録</a> : null}
-        <button type="button" className="action-secondary" onClick={newCat} disabled={saving}>新しい猫</button>
+        <button type="button" className="pedigree-new-cat action-secondary" onClick={newCat} disabled={saving}>新しい猫</button>
         {formData.id ? <a className="action-secondary" href={'/pedigrees/' + formData.id + '/print'} target="_blank" rel="noreferrer">印刷</a> : null}
       </div>
     </div>
@@ -186,7 +186,7 @@ export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeM
     </div>
     {loading ? <p role="status" className="mb-3">猫の情報を呼び出しています…</p> : null}
     {!canWrite ? <p className="mb-3 text-amber-800">現在は閲覧用です。</p> : null}
-    <nav aria-label="フォーム内の移動" className="mb-3 flex flex-wrap gap-2 lg:hidden">
+    <nav aria-label="フォーム内の移動" className="pedigree-section-nav mb-3 flex flex-wrap gap-2 lg:hidden">
       {([['cat-details','本猫'],['parents','父母'],['grandparents','祖父母'],['great-grandparents','曾祖父母']] as const).map(([id,label]) => <a key={id} className="action-secondary" href={'#' + id}>{label}</a>)}
     </nav>
     <section id="cat-details" className="mb-4 scroll-mt-4" aria-labelledby="cat-details-heading">
@@ -194,8 +194,9 @@ export default function PedigreeForm({ masters, canWrite }: { masters: PedigreeM
       <fieldset disabled={saving || loading || !canWrite} className="min-w-0">
       <div className="pedigree-basic-grid">
         <div className="pedigree-details-column">
-          <div className="pedigree-field-row"><FormInput label="本猫ID" fieldSize="id" value={formData.pedigreeId || ''} readOnly />{master('genderCode','性別',masters.genders)}</div>
-          {input('catName','名前')}
+          {/* 配置見本に合わせ、IDと名前を同じ行、性別をその次にする。 */}
+          <div className="pedigree-cat-identity pedigree-field-row"><FormInput label="本猫ID" fieldSize="id" value={formData.pedigreeId || ''} readOnly />{input('catName','名前')}</div>
+          {master('genderCode','性別',masters.genders)}
           {master('breedCode','猫種',masters.breeds)}{master('coatColorCode','色柄',masters.colors)}
         </div>
         <div className="pedigree-details-column"><div className="pedigree-field-row">{input('birthDate','誕生日')}{input('registrationDate','登録日')}{input('eyeColor','目色')}</div>{input('breederName','繁殖者')}{input('ownerName','所有者')}</div>
