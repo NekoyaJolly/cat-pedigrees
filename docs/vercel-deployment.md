@@ -72,7 +72,7 @@ Supabaseの[ログインURL設定](https://supabase.com/dashboard/project/hnhhfc
 
 ## CLIによる設定の準備
 
-公式のResend CLI 2.26.0とSupabase CLI 2.121.0を作業環境へ導入し、配布元のSHA-256と起動を確認した。アプリへの依存追加はない。両CLIの認証状態は未ログイン。ブラウザーのログインはCLIへ引き継がれないため、SMTPの切替は未実施。
+公式のResend CLI 2.26.0とSupabase CLI 2.121.0を作業環境へ導入し、配布元のSHA-256と起動を確認した。アプリへの依存追加はない。Supabase CLIは本人の確認コードで認証し、所有者だけが読み取れる専用の保存先から別の処理でも利用できることを確認した。管理APIでもPedigreeの専用SMTPは未設定、メール送信上限は1時間2通であることを確認した。Resend CLIの認証は未完了で、SMTPの切替は未実施。ブラウザーのログインはCLIへ引き継がれない。
 
 `scripts/configure-resend-smtp.mjs`は対象プロジェクトを`hnhhfcityestinsvcdfw`へ固定し、Supabase Management APIへSMTPの6項目とメール送信上限だけを保存する。上限は1時間30通とし、既にそれ以上なら維持する。保存後は設定を読み直し、接続先・送信元・上限と、既存のログインURL・確認設定を検証する。APIキーの有効性と配信成功は設定の読み直しだけでは確認できないため、受信確認を別途行う。
 
@@ -95,6 +95,6 @@ node scripts/configure-resend-smtp.mjs --apply
 node --test tests/smtp-setup.test.mjs
 ```
 
-この作業環境での`--check`は3項目が未設定であることを確認して停止した。`--apply`は実行しておらず、ResendのAPIキー作成、送信元ドメインの変更、SupabaseのSMTP変更、実メール送信はいずれも未実施。ブラウザー経由の設定は観察保護で確認できないため、CLI/APIの認証が次の作業条件となる。
+この作業環境で認証済みの管理トークンを非表示で渡した`--check`は、`RESEND_SMTP_PASSWORD`と`SMTP_FROM_EMAIL`の2項目が未設定であることを確認して停止した。`--apply`は実行しておらず、ResendのAPIキー作成、送信元ドメインの変更、SupabaseのSMTP変更、実メール送信はいずれも未実施。ブラウザー経由の設定は観察保護で確認できないため、Resend CLI/APIの認証と送信元の確認が次の作業条件となる。
 
 APIの仕様：[SMTP設定](https://supabase.com/docs/guides/auth/auth-smtp)、[認証設定の部分更新](https://supabase.com/docs/reference/api/v1-update-auth-service-config)、[ResendのSupabase接続](https://resend.com/docs/send-with-supabase-smtp)。
