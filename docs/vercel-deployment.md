@@ -60,7 +60,7 @@ Supabaseの[ログインURL設定](https://supabase.com/dashboard/project/hnhhfc
 
 ## メール送信制限の確認と残作業
 
-2026年10月18日、利用者から「時間をおいてお試しください」と表示され、メールを送れないとの報告があった。Supabaseの画面で、Pedigreeは標準のメール送信を使用し、専用SMTPは無効であることを確認した。標準送信はプロジェクト全体で1時間2通に制限されており、今回の報告と一致する。失敗した要求の提供元エラーコードは未取得のため、個別の要求に適用された制限の種類までは確定していない。
+2026年10月18日、利用者から「時間をおいてお試しください」と表示され、メールを送れないとの報告があった。Supabaseの画面で、Pedigreeは標準のメール送信を使用し、専用SMTPは無効であることを確認した。標準送信はプロジェクト全体で1時間2通に制限されている。認証ログでも直近24時間の`/otp`に成功2件（HTTP 200）と送信上限による拒否6件（HTTP 429、`over_email_send_rate_limit`）があり、今回の原因を確認できた。メール本文、宛先、認証トークンは調査結果へ保存していない。
 
 - 公式仕様：[メール送信と認証の上限](https://supabase.com/docs/guides/auth/rate-limits)、[専用SMTPの設定](https://supabase.com/docs/guides/auth/auth-smtp)。
 - 送信処理はボタン操作時に1回実行され、自動再送や繰り返し送信の処理はない。
@@ -69,3 +69,32 @@ Supabaseの[ログインURL設定](https://supabase.com/dashboard/project/hnhhfc
 - 対応はPedigree側へのResend接続の追加。既存アカウントで利用可能な送信元と接続権限の確認が必要。Resend側の画面をブラウザーの保護機能で確認できず、接続の切替は未実施。
 
 今回の調査ではログインメールの再送を行っていない。専用SMTPの設定後、メール送信上限と本人の受信・ログインを改めて確認する。
+
+## CLIによる設定の準備
+
+公式のResend CLI 2.26.0とSupabase CLI 2.121.0を作業環境へ導入し、配布元のSHA-256と起動を確認した。アプリへの依存追加はない。両CLIの認証状態は未ログイン。ブラウザーのログインはCLIへ引き継がれないため、SMTPの切替は未実施。
+
+`scripts/configure-resend-smtp.mjs`は対象プロジェクトを`hnhhfcityestinsvcdfw`へ固定し、Supabase Management APIへSMTPの6項目とメール送信上限だけを保存する。上限は1時間30通とし、既にそれ以上なら維持する。保存後は設定を読み直し、接続先・送信元・上限と、既存のログインURL・確認設定を検証する。APIキーの有効性と配信成功は設定の読み直しだけでは確認できないため、受信確認を別途行う。
+
+必要な環境変数は次の3つ。秘密値をGit・チャット・コマンド引数・ログへ記録せず、実行する端末のシークレット管理または非表示入力で渡す。
+
+| 変数 | 内容 |
+| --- | --- |
+| `SUPABASE_ACCESS_TOKEN` | 対象プロジェクトの認証設定を読み取り・更新できる管理用トークン。アプリ用の公開キーやDBパスワードでは代用できない |
+| `RESEND_SMTP_PASSWORD` | Resendの認証済み送信ドメインに限定した送信専用APIキー |
+| `SMTP_FROM_EMAIL` | 上記の認証済みドメインの送信元メールアドレス |
+
+```bash
+# 入力の有無と形式を確認する。API通信も設定変更も行わない。
+node scripts/configure-resend-smtp.mjs --check
+
+# 認証と送信元が揃った環境で、専用SMTPの設定を保存・再取得する。
+node scripts/configure-resend-smtp.mjs --apply
+
+# 実サービスへ接続せず、変更対象・秘密値の非表示・異常時の停止を確認する。
+node --test tests/smtp-setup.test.mjs
+```
+
+この作業環境での`--check`は3項目が未設定であることを確認して停止した。`--apply`は実行しておらず、ResendのAPIキー作成、送信元ドメインの変更、SupabaseのSMTP変更、実メール送信はいずれも未実施。ブラウザー経由の設定は観察保護で確認できないため、CLI/APIの認証が次の作業条件となる。
+
+APIの仕様：[SMTP設定](https://supabase.com/docs/guides/auth/auth-smtp)、[認証設定の部分更新](https://supabase.com/docs/reference/api/v1-update-auth-service-config)、[ResendのSupabase接続](https://resend.com/docs/send-with-supabase-smtp)。
